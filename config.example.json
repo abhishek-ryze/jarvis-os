@@ -1,0 +1,12 @@
+{
+  "name": "Jarvis OS",
+  "limits": {
+    "fiveHour": 200000000,
+    "sevenDay": 1500000000
+  },
+  "trimPrefixes": [],
+  "gitRepos": [],
+  "artifactDirs": [],
+  "microAppDirs": [],
+  "permissionMode": "plan"
+}

@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "jarvis",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "server.js"
+      ],
+      "port": 4317
+    },
+    {
+      "name": "jarvis-demo",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "server.js",
+        "--demo",
+        "--port=4319"
+      ],
+      "port": 4319
+    }
+  ]
+}

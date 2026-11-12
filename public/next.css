@@ -1,0 +1,95 @@
+/* Next level layer (next.js): briefing line, standby screen. Sizes and weights from type.css. */
+
+/* briefing: left of the header stamps, takes the free space of that row */
+.brief { flex: 1 1 640px; min-width: 0; padding: 4px 0; border: 0; background: none; text-align: left; cursor: pointer;
+  font: var(--w-400) var(--t-sm)/1.5 var(--mono); letter-spacing: var(--trk-cap); text-transform: uppercase; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.brief:empty { visibility: hidden }
+.brief:hover, .brief.say { color: var(--cyan) }
+.brief.typing::after, .brief.say::after { content: "_"; color: var(--orange) }
+body.brain .brief { display: none }
+@media (max-width: 760px) { .brief { display: none } }
+
+/* standby: native dialog in the top layer, any key or press closes it */
+dialog.standby { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: rgba(5, 8, 11, .94); color: var(--text); cursor: none }
+dialog.standby::backdrop { background: transparent }
+.sb-box { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; outline: 0; animation: fx-fade .5s ease-out both }
+.sb-dial { position: relative; width: 320px; height: 320px; display: grid; place-items: center }
+.sb-dial svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible }
+.sb-dial circle { fill: none; transform-origin: 160px 160px }
+.sb-r1 { stroke: var(--cyan); stroke-width: 1; stroke-dasharray: 2 10; animation: sb-spin 120s linear infinite }
+.sb-r2 { stroke: var(--cyan-dim); stroke-width: 6; stroke-dasharray: 180 44 60 44; animation: sb-spin 40s linear infinite reverse }
+.sb-r3 { stroke: var(--orange); stroke-width: 1.5; stroke-dasharray: 90 714; animation: sb-spin 12s linear infinite }
+@keyframes sb-spin { to { transform: rotate(360deg) } }
+.sb-mid { position: relative; display: grid; justify-items: center; gap: 8px }
+.sb-k, .sb-stats span, .sb-hint { font: var(--w-400) var(--t-xs)/1.4 var(--mono); letter-spacing: var(--trk-wide); text-transform: uppercase; color: var(--muted) }
+.sb-time { font: var(--w-600) var(--t-hero)/1.1 var(--mono); font-variant-numeric: tabular-nums; color: var(--text); text-shadow: 0 0 24px rgba(56, 214, 245, .45) }
+.sb-date { font: var(--w-400) var(--t-md)/1.4 var(--mono); letter-spacing: var(--trk-cap); text-transform: uppercase; color: var(--cyan) }
+.sb-stats { list-style: none; margin: 0; padding: 0; display: flex; gap: 48px }
+.sb-stats li { display: grid; justify-items: center; gap: 4px }
+.sb-stats b { font: var(--w-600) var(--t-xl)/1.2 var(--mono); font-variant-numeric: tabular-nums; color: var(--text) }
+.sb-stats b.hot { color: var(--orange) }
+.sb-hint { margin: 0 }
+
+@media (prefers-reduced-motion: reduce) { .sb-box, .sb-dial circle { animation: none } }
+html[data-motion=reduce] :is(.sb-box, .sb-dial circle) { animation: none }
+
+/* settings cog: last item of the header stamps */
+.stamp .hl.cog { display: grid; place-items: center; width: 28px; margin-left: -4px }
+.stamp .hl.cog svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transition: transform .4s cubic-bezier(.2, .8, .2, 1) }
+.stamp .hl.cog:hover svg { transform: rotate(60deg) }
+@media (prefers-reduced-motion: reduce) { .stamp .hl.cog svg { transition: none } }
+
+/* ---------- polish layer: eased states, sheen, draw-in. a11y.css stops all of it under reduce motion ---------- */
+/* registered, so the chamfer edge colour can ease like border-color does */
+@property --b { syntax: '<color>'; inherits: true; initial-value: #12303a }
+:root { --b: var(--line); caret-color: var(--cyan) }
+::selection { background: rgba(56, 214, 245, .3); color: #fff }
+
+:is(.btn, select, .chip, .back, .ib, .cbtn, .zoom button, .x, .nav button, .field, .search input, textarea, .hl) { transition: --b .16s, border-color .16s, color .16s, background-color .16s }
+:is(.btn, .chip, .back, .ib, .cbtn, .x, .nav button):active { transform: translateY(1px) }
+
+/* panels: soft light from the top edge, border wakes on hover */
+.panel { box-shadow: inset 0 1px 0 rgba(56, 214, 245, .08), inset 0 30px 30px -30px rgba(56, 214, 245, .09); transition: --b .25s, border-color .25s, background-color .25s }
+.panel:hover { --b: #1b4a59; border-color: #1b4a59 }
+
+/* list rows: tint that reaches 8px past the text on both sides */
+li.row { transition: background-color .15s, box-shadow .15s }
+li.row:hover { background-color: rgba(56, 214, 245, .045); box-shadow: -8px 0 rgba(56, 214, 245, .045), 8px 0 rgba(56, 214, 245, .045) }
+
+/* checkboxes: chamfered box, cyan tick */
+input[type=checkbox] { appearance: none; flex: none; display: inline-grid; place-content: center; width: 18px; height: 18px; margin: 0; vertical-align: middle; --cb: var(--cyan-dim); border: 1px solid var(--cb); background-color: var(--seg);
+  background-image: linear-gradient(225deg, var(--cb) 3.8px, transparent 3.8px), linear-gradient(45deg, var(--cb) 3.8px, transparent 3.8px);
+  clip-path: polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 4px 100%, 0 calc(100% - 4px)); transition: border-color .14s, background-color .14s }
+input[type=checkbox]::before { content: ""; width: 10px; height: 10px; background: var(--cyan); clip-path: polygon(12% 46%, 0 62%, 40% 100%, 100% 20%, 86% 8%, 38% 70%); transform: scale(0); transition: transform .14s var(--ease) }
+input[type=checkbox]:hover { --cb: var(--cyan) }
+input[type=checkbox]:checked { --cb: var(--cyan); background-color: #0b2a33 }
+input[type=checkbox]:checked::before { transform: scale(1) }
+input[type=checkbox]:focus-visible { outline: 2px solid var(--text); outline-offset: -2px }
+input[type=checkbox]:disabled { opacity: .45 }
+
+/* nav: one underline that slides between pages (next.js places it) */
+.nav { position: relative }
+.nav-ink { position: absolute; left: 0; top: 0; width: var(--w); height: 2px; transform: translate(var(--x), var(--y)); background: var(--orange); box-shadow: 0 0 8px rgba(255, 106, 61, .7); pointer-events: none }
+.nav-ink[hidden] { display: none }
+.nav.inked .nav-ink { transition: transform .32s var(--ease), width .32s var(--ease) }
+.nav.inked button[aria-current="page"] { box-shadow: none }
+
+/* modals: rise in over a soft blur */
+dialog.modal[open] .modal-box { animation: nx-pop .22s var(--ease) }
+dialog.modal::backdrop { backdrop-filter: blur(3px) }
+html[data-fx=off] dialog.modal::backdrop { backdrop-filter: none }
+@keyframes nx-pop { from { opacity: 0; translate: 0 10px } }
+
+/* charts draw in on page open only (html.nx-in, set by next.js), not on every data refresh */
+html.nx-in .bars i { animation: nx-grow .5s var(--ease) backwards; transform-origin: bottom }
+html.nx-in li.row i::after { animation: nx-run .6s var(--ease) backwards; transform-origin: left }
+html.nx-in svg.spark { animation: nx-wipe .7s var(--ease) backwards }
+@keyframes nx-grow { from { transform: scaleY(0) } }
+@keyframes nx-run { from { transform: scaleX(0) } }
+@keyframes nx-wipe { from { clip-path: inset(0 100% 0 0) } to { clip-path: inset(0) } }
+@media (prefers-reduced-motion: reduce) {
+  :is(.btn, select, .chip, .back, .ib, .cbtn, .zoom button, .x, .nav button, .field, .search input, textarea, .hl), .panel, li.row, input[type=checkbox], input[type=checkbox]::before, .nav.inked .nav-ink { transition: none }
+  dialog.modal[open] .modal-box { animation: none }
+  :is(.btn, .chip, .back, .ib, .cbtn, .x, .nav button):active { transform: none }
+}

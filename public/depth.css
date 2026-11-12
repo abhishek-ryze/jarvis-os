@@ -1,0 +1,105 @@
+/* 3D HUD view (Display settings, html[data-view=depth]): Home only. The dial splits into z planes on a tilted stack,
+ the side columns fold in, and depth of field blurs what is not in focus. Hover or keyboard focus pulls a plane sharp.
+ Rules: never put filter, opacity < 1, overflow or clip-path on #main, .center, .dial or .col (they flatten 3D);
+ blur only leaves. Off in Brain (transforms would trap the fixed mini dial) and under 961px. */
+@property --dz { syntax: '<number>'; inherits: true; initial-value: 1 }
+
+@media (min-width: 961px) {
+  html[data-view=depth] body:not(.brain) #main {
+    --rx: 0deg; --ry: 0deg; /* pointer parallax + idle drift, set by depth.js */
+    perspective: 1500px; perspective-origin: 50% 38%;
+    animation: dz-in 1.4s cubic-bezier(.2, .8, .2, 1) both
+  }
+  @keyframes dz-in { from { --dz: 0 } }
+  /* stay flat under the boot cover, then unfold as it lifts */
+  html.fx-booting[data-view=depth] body:not(.brain) #main { --dz: 0; animation: none }
+
+  html[data-view=depth] body:not(.brain) #leaders { display: none }
+
+  /* side columns fold in toward the dial, set back in z */
+  html[data-view=depth] body:not(.brain) #left,
+  html[data-view=depth] body:not(.brain) #right { transform-style: preserve-3d }
+  html[data-view=depth] body:not(.brain) #left {
+    transform-origin: 100% 40%;
+    transform: rotateX(var(--rx)) rotateY(calc(var(--ry) + 18deg * var(--dz))) translateZ(calc(-120px * var(--dz)))
+  }
+  html[data-view=depth] body:not(.brain) #right {
+    transform-origin: 0 40%;
+    transform: rotateX(var(--rx)) rotateY(calc(var(--ry) - 18deg * var(--dz))) translateZ(calc(-120px * var(--dz)))
+  }
+
+  /* the dial: a tilted stack of planes */
+  html[data-view=depth] body:not(.brain) .center { transform-style: preserve-3d }
+  html[data-view=depth] body:not(.brain) .dial {
+    transform-style: preserve-3d;
+    transform: rotateX(calc(var(--rx) + 32deg * var(--dz))) rotateY(var(--ry))
+  }
+  html[data-view=depth] body:not(.brain) .dial > * { transition: filter .6s cubic-bezier(.2, .8, .2, 1) }
+  html[data-view=depth] body:not(.brain) #hudRing { translate: 0 0 calc(-150px * var(--dz)); filter: blur(4px) brightness(.65) }
+  /* the cyan rings share the tile plane: #pointer (the orange arc) lives in this svg and must stay on the tiles */
+  html[data-view=depth] body:not(.brain) .dial > svg:nth-of-type(2) { translate: 0 0 0 }
+  html[data-view=depth] body:not(.brain) #ring { translate: 0 0 0 }
+  /* hovered or focused tile lifts: SVG groups take no CSS z, so scale plus a drop shadow fakes the rise */
+  html[data-view=depth] body:not(.brain) .seg {
+    transform-box: fill-box; transform-origin: center;
+    transition: scale .3s cubic-bezier(.2, .8, .2, 1), filter .3s cubic-bezier(.2, .8, .2, 1)
+  }
+  html[data-view=depth] body:not(.brain) .seg:is(:hover, :focus-visible) {
+    scale: 1.07;
+    filter: drop-shadow(0 10px 8px rgba(0, 0, 0, .7)) drop-shadow(0 0 10px rgba(56, 214, 245, .45))
+  }
+  /* decorative rings, pure ornament: one deep and slow, one floating just above the tiles */
+  html[data-view=depth] body:not(.brain) .dial::before,
+  html[data-view=depth] body:not(.brain) .dial::after {
+    content: ""; position: absolute; border-radius: 50%; pointer-events: none
+  }
+  html[data-view=depth] body:not(.brain) .dial::before {
+    inset: -16%; border: 1px dashed rgba(56, 214, 245, .22);
+    translate: 0 0 calc(-260px * var(--dz)); filter: blur(3px);
+    animation: dz-spin 140s linear infinite
+  }
+  html[data-view=depth] body:not(.brain) .dial::after {
+    inset: 6%; border: 1px solid transparent;
+    border-top-color: rgba(56, 214, 245, .35); border-bottom-color: rgba(255, 159, 67, .25);
+    translate: 0 0 calc(30px * var(--dz)); opacity: .8;
+    animation: dz-spin 38s linear infinite reverse
+  }
+  @keyframes dz-spin { to { rotate: 360deg } }
+  /* focus swap: hover an hour tick or gauge arc on the back ring and it comes sharp while the front goes soft */
+  html[data-view=depth] body:not(.brain) .dial:has(#hHours :hover, #hGauges :hover) #hudRing { filter: none }
+  /* the readout shows what the back ring holds, so the core and readout stay sharp; only the tiles go a little soft */
+  html[data-view=depth] body:not(.brain) .dial:has(#hHours :hover, #hGauges :hover) > :is(svg:nth-of-type(2), #ring) { filter: blur(.8px) brightness(.75) }
+  /* the front layers' empty boxes sit in front of the back ring in 3D and would catch its hover: only their painted parts take the pointer */
+  html[data-view=depth] body:not(.brain) :is(.center, .dial, #ring, .greads) { pointer-events: none }
+  html[data-view=depth] body:not(.brain) :is(.center > :not(.dial, .greads), .greads > *, #ring .seg, #cv, #coreBtn) { pointer-events: auto }
+  html[data-view=depth] body:not(.brain) #cv.core,
+  html[data-view=depth] body:not(.brain) #coreBtn { translate: 0 0 calc(80px * var(--dz)) }
+  html[data-view=depth] body:not(.brain) .readout { translate: 0 0 calc(110px * var(--dz)); animation: dz-float 7s ease-in-out infinite alternate }
+  @keyframes dz-float { to { translate: 0 0 calc(126px * var(--dz)) } }
+  /* depth of field: side panels and the under-dial rows sit out of focus until hovered or focused */
+  html[data-view=depth] body:not(.brain) #main .panel.w,
+  html[data-view=depth] body:not(.brain) .greads {
+    filter: blur(2px) brightness(.7);
+    transition: filter .5s cubic-bezier(.2, .8, .2, 1)
+  }
+  html[data-view=depth] body:not(.brain) #main .panel.w:is(:hover, :focus-within),
+  html[data-view=depth] body:not(.brain) .greads:is(:hover, :focus-within) { filter: none }
+  /* focus pull: while a side panel holds focus, the dial goes soft */
+  html[data-view=depth] body:not(.brain) #main:has(.col .panel.w:is(:hover, :focus-within)) .dial > :not(#hudRing) { filter: blur(1.4px) brightness(.8) }
+  /* Depth of field off (Display settings, html[data-dof=off]): every plane stays sharp and lit; the tilt stays */
+  html[data-dof=off][data-view=depth] body:not(.brain) :is(.dial > *, #main .panel.w, .greads) { filter: none !important }
+  html[data-dof=off][data-view=depth] body:not(.brain) .dial::before { filter: none }
+  /* dive (index.html expand, 300 ms): the HUD flattens toward the viewer and the side panels fade, then the core opens */
+  html[data-view=depth] body.dive:not(.brain) #main { animation: dz-out .3s cubic-bezier(.55, 0, .75, .2) both }
+  @keyframes dz-out { to { --dz: 0 } }
+  html[data-view=depth] body.dive:not(.brain) #main .col > *, html[data-view=depth] body.dive:not(.brain) .greads,
+  html[data-view=depth] body.dive:not(.brain) #leaders { opacity: 0; transition: opacity .22s }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-view=depth] body:not(.brain) #main, html[data-view=depth] body:not(.brain) .readout,
+  html[data-view=depth] body:not(.brain) .dial::before, html[data-view=depth] body:not(.brain) .dial::after { animation: none }
+  html[data-view=depth] body:not(.brain) .seg { transition: none }
+  html[data-view=depth] body:not(.brain) #main .panel.w, html[data-view=depth] body:not(.brain) .greads,
+  html[data-view=depth] body:not(.brain) .dial > * { transition: none }
+}

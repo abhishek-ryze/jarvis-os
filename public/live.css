@@ -1,0 +1,53 @@
+/* live work package: Needs you, burn rate, live session bars, tool errors, routines mini list. */
+
+/* orange only when a value needs action */
+li.row.warn b, li.row.warn small { color: var(--orange) }
+li.row.warn i::after { background: var(--orange) }
+
+/* Needs you: full-width strip above the other Home panels */
+#needs { grid-column: 1 / -1 }
+#needList { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 40px }
+#needList li.row:only-child { grid-column: 1 / -1 }
+li.need { grid-template-columns: minmax(0, 1fr) auto; align-items: center }
+li.need > button:first-child { display: grid; gap: 2px; min-width: 0; min-height: 44px; padding: 0; background: none; border: 0; color: var(--text); font: 12px var(--mono); text-align: left; cursor: pointer }
+li.need > button:first-child span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+li.need > button:first-child small { grid-column: auto; color: var(--muted) }
+li.need.warn > button:first-child span { color: var(--orange) }
+li.need > button:first-child:hover span { text-decoration: underline; text-decoration-color: var(--cyan-dim); text-underline-offset: 3px }
+li.need .x { cursor: pointer; color: var(--muted) }
+li.need button:focus-visible, .errrow:focus-visible, li.lv:focus-visible, .lnk:focus-visible, .info:focus-visible, .sid:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px }
+#needs .foot { justify-content: flex-start }
+#needs .foot .status { margin: 0 0 0 auto }
+
+/* tool errors row */
+.errrow { display: grid; gap: 2px; min-height: 44px; padding: 0; background: none; border: 0; color: var(--text); font: 12px var(--mono); text-align: left; cursor: pointer }
+.errrow b { font-weight: 600; color: var(--cyan); font-variant-numeric: tabular-nums }
+.errrow small { font-size: 12px; color: var(--muted) }
+.errrow:hover small { color: var(--text) }
+.errlist { max-height: 60vh }
+.errlist li.row small { white-space: normal; overflow-wrap: anywhere }
+.sid { grid-column: 1 / -1; justify-self: start; min-height: 32px; padding: 0; background: none; border: 0; color: var(--cyan); font: 12px var(--mono); cursor: pointer; text-decoration: underline; text-decoration-color: var(--cyan-dim); text-underline-offset: 3px }
+
+/* burn rate teach line */
+.teach { margin-top: 8px }
+.teach code { display: block; margin-top: 6px; padding: 6px 8px; background-color: var(--bg); border: 1px solid var(--line); color: var(--text); font: 12px var(--mono); white-space: pre-wrap; user-select: all }
+
+/* live sessions: context bar is the row's i; cache drain bar sits after the cache text */
+li.lv { cursor: pointer }
+li.lv:hover span { color: var(--cyan) }
+li.lv b { display: inline-flex; align-items: center; gap: 8px }
+.drain { display: inline-block; width: 40px; height: 3px; background: #0e222a; position: relative }
+.drain::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--cyan) }
+li.lv b.st-done .drain { display: none }
+
+/* routines mini list (right column, Runs panel) */
+.rtmini { margin-top: 4px }
+.rtmini li.row { padding: 4px 0 }
+.lnk { padding: 0; background: none; border: 0; color: var(--cyan); font: inherit; font-style: normal; cursor: pointer; text-decoration: underline; text-decoration-color: var(--cyan-dim); text-underline-offset: 3px }
+
+/* "i": how a figure is computed, shown on hover and focus */
+.tipw { position: relative; display: inline-flex; vertical-align: middle; text-transform: none; letter-spacing: 0 }
+.info { width: 20px; height: 20px; display: inline-grid; place-items: center; padding: 0; background: none; border: 1px solid var(--cyan-dim); border-radius: 50%; color: var(--muted); font: italic 600 12px Georgia, serif; cursor: help }
+.info:hover { color: var(--text); border-color: var(--cyan) }
+.tip { display: none; position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; width: 280px; padding: 8px 10px; background-color: rgba(8, 16, 23, .98); border: 1px solid var(--cyan-dim); color: var(--text); font: 400 12px/1.5 var(--mono); letter-spacing: 0; text-transform: none; white-space: normal }
+.tipw:hover .tip, .info:focus-visible + .tip { display: block }

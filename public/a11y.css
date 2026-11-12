@@ -1,0 +1,34 @@
+/* Display settings (Settings dialog, shell.js). The <html> data attributes come from the head script in index.html. */
+
+/* Reduce motion: stop every CSS animation and transition. Scripts read the same choice through prefers-reduced-motion. */
+html[data-motion=reduce] *, html[data-motion=reduce] ::before, html[data-motion=reduce] ::after {
+  animation: none !important; transition: none !important; scroll-behavior: auto !important
+}
+
+/* Readable font: system sans in place of the monospace UI font, with normal tracking */
+html[data-font=readable] {
+  --mono: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --trk-cap: .04em; --trk-wide: .06em
+}
+html[data-font=readable] .brand { letter-spacing: .08em }
+
+/* High contrast: brighter secondary text and borders, no glow on the brand */
+html[data-contrast=high] {
+  --text: #ffffff; --muted: #d2dade; --line: #3d7f92; --cyan-dim: #4fb6cc
+}
+html[data-contrast=high] .brand { text-shadow: none }
+
+/* Effects off: no WebGL dust, grain, scan band or cursor trail */
+html[data-fx=off] :is(.fx-bg, .fx-post, .fx-scan, .fx-ov) { display: none !important }
+
+/* settings dialog */
+.a11y-list { display: grid; gap: 4px; margin: 0; padding: 0; border: 0 }
+.a11y-row { display: grid; grid-template-columns: 20px 1fr; gap: 12px; align-items: start; padding: 10px 0; cursor: pointer; border-top: 1px solid var(--line) }
+.a11y-row:first-of-type { border-top: 0 }
+.a11y-row input { width: 18px; height: 18px; margin: -1px 0 0; accent-color: var(--cyan) }
+.a11y-row.a11y-sub { border-top: 0; padding: 0 0 10px 32px; margin-top: -4px }
+.a11y-row:has(input:disabled) { opacity: .45; cursor: default }
+.a11y-row b { display: block; font: 600 13px var(--mono); color: var(--text) }
+.a11y-row span span { display: block; font: 400 13px/1.45 system-ui, "Segoe UI", sans-serif; color: var(--muted); margin-top: 2px }
+.a11y-note { font: 400 13px/1.45 system-ui, "Segoe UI", sans-serif; color: var(--muted); margin: 0 }
+.a11y-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px }

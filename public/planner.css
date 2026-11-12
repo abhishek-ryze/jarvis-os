@@ -1,0 +1,18 @@
+/* Planner page (planner.js). Reuses .panel, .field, .btn, .x, li.row, textarea from the main sheet. */
+.pl-add, .pl-ev { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px }
+.pl-ev .field[type=date], .pl-ev .field[type=time] { flex: 1 1 120px; color-scheme: dark }
+.pl-ev #plEvT { flex-basis: 100% }
+.pl-todo label { display: grid; grid-template-columns: 18px 1fr; gap: 12px; align-items: center; cursor: pointer; min-height: 32px }
+.pl-todo input { width: 18px; height: 18px; margin: 0; accent-color: var(--cyan) }
+.pl-todo.done span { color: var(--muted); text-decoration: line-through }
+.pl-todo, .pl-ev-row { align-items: center }
+.pl-day { font: 600 12px var(--mono); letter-spacing: var(--trk-cap, .1em); color: var(--cyan); text-transform: uppercase; padding: 12px 0 4px }
+.pl-day:first-child { padding-top: 0 }
+.pl-ev-row b { font-weight: 600; color: var(--cyan); margin-right: 8px }
+#plTodayList b { font-weight: 600; color: var(--cyan); margin-right: 8px }
+.pl-notes { min-height: 360px }
+.pl-sched .teach { margin-top: 4px }
+/* Schedule fills the side column; Notes sits right under To do */
+@media (min-width: 961px) { .pl-sched { grid-row: span 2; align-self: start } }
+/* Touch targets: 44px at phone widths (same rule as the Home rings, applied to Planner rows too). */
+@media (max-width: 420px) { .pl-todo label { min-height: 44px } .pl-sched .teach summary { padding: 16px 0 } }

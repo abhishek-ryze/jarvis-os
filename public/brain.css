@@ -1,0 +1,20 @@
+/* brain work package: layout toggle, hover tooltip, card tags, local graph */
+.bseg { display: inline-flex }
+.bseg .chip + .chip { margin-left: -1px }
+.bseg .chip[aria-pressed="true"] { position: relative; color: var(--text); border-color: var(--cyan) }
+
+#stageUI .btip.panel { position: absolute; left: 0; top: 0; z-index: 5; width: max-content; max-width: 380px; padding: 10px 14px 12px; pointer-events: none; background-color: rgba(8, 16, 23, .96); font: 12px var(--mono); color: var(--text) }
+.btip b { display: block; margin-bottom: 8px; font: 600 14px/1.3 system-ui, "Segoe UI", sans-serif; overflow-wrap: anywhere }
+.btip dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; margin: 0 }
+.btip dt { color: var(--muted); letter-spacing: .12em; text-transform: uppercase }
+.btip dd { margin: 0; overflow-wrap: anywhere }
+.btip .tpath { display: block; margin-top: 8px; color: var(--muted); overflow-wrap: anywhere }
+
+.ctags { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 12px; padding: 0; list-style: none }
+.ctags li { padding: 3px 8px; border: 1px solid var(--cyan-dim); font: 12px var(--mono); letter-spacing: .06em; color: var(--muted) }
+.ctags li:first-child { color: var(--text) }
+.clocal { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px }
+.bspeed { display: inline-flex; align-items: center; gap: 8px; font: 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted) }
+.bspeed input { width: 96px; accent-color: var(--cyan) }
+.banimat { display: inline-flex; align-items: center; min-height: 32px; min-width: 12ch; font: 12px var(--mono); color: var(--text) }
+.clocal .bseg .chip { min-width: 32px; justify-content: center; padding: 0 10px }

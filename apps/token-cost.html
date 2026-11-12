@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Token cost calculator</title>
+<meta name="description" content="Estimate the API cost of a run from token counts, per model, using the dashboard price table.">
+<style>
+:root { --bg: #05080b; --panel: #081017; --line: #12303a; --cyan: #38d6f5; --orange: #ff6a3d; --text: #e6e9eb; --muted: #9aa4ab; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace }
+* { box-sizing: border-box; margin: 0 }
+body { background: var(--bg); color: var(--text); font: 13px/1.5 var(--mono); padding: 20px; display: grid; gap: 16px; max-width: 920px }
+h1 { font: 600 12px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--cyan) }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px }
+label { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px }
+input, select { width: 100%; height: 40px; padding: 0 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 0; color: var(--text); font: 13px var(--mono) }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px }
+.out { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; padding: 14px; background: var(--panel); border: 1px solid var(--line) }
+.v { font: 600 22px var(--mono); color: var(--text); font-variant-numeric: tabular-nums }
+.k { font-size: 12px; color: var(--muted) }
+.total .v { color: var(--cyan) }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums }
+th, td { text-align: right; padding: 6px 8px; border-top: 1px solid var(--line) }
+th:first-child, td:first-child { text-align: left }
+th { color: var(--muted); font-weight: 400 }
+button { height: 40px; padding: 0 16px; background: var(--bg); border: 1px solid var(--orange); color: var(--orange); font: 600 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; width: max-content }
+.note { color: var(--muted); font-size: 12px }
+</style>
+</head>
+<body>
+<h1>Token cost calculator</h1>
+<div class="grid">
+  <div><label for="m">Model</label><select id="m"></select></div>
+  <div><label for="in">Input tokens</label><input id="in" type="number" min="0" value="200000"></div>
+  <div><label for="cw">Cache write tokens</label><input id="cw" type="number" min="0" value="50000"></div>
+  <div><label for="cr">Cache read tokens</label><input id="cr" type="number" min="0" value="1500000"></div>
+  <div><label for="out">Output tokens</label><input id="out" type="number" min="0" value="40000"></div>
+  <div><label for="n">Runs</label><input id="n" type="number" min="1" value="1"></div>
+</div>
+<div class="out" aria-live="polite">
+  <div><div class="k">Input</div><div class="v" id="c-in"></div></div>
+  <div><div class="k">Cache write</div><div class="v" id="c-cw"></div></div>
+  <div><div class="k">Cache read</div><div class="v" id="c-cr"></div></div>
+  <div><div class="k">Output</div><div class="v" id="c-out"></div></div>
+  <div class="total"><div class="k">Total</div><div class="v" id="c-t"></div></div>
+</div>
+<button id="all" type="button">Compare all models</button>
+<table id="tbl" hidden><thead><tr><th>Model</th><th>Per run</th><th>All runs</th></tr></thead><tbody></tbody></table>
+<p class="note">Price table: USD per million tokens, same as the dashboard (lib/cost.js). Estimates only. Your config.json can override prices.</p>
+<script>
+const P = {
+  opus: { input: 5, output: 25, cacheWrite: 6.25, cacheRead: 0.5 },
+  sonnet: { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 },
+  haiku: { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 },
+}
+const $ = id => document.getElementById(id)
+const usd = v => '$' + v.toFixed(v < 1 ? 3 : 2)
+const num = id => Math.max(0, +$(id).value || 0)
+$('m').innerHTML = Object.keys(P).map(k => '<option>' + k + '</option>').join('')
+$('m').value = 'sonnet'
+const cost = (m, t) => ({ in: t.in * P[m].input / 1e6, cw: t.cw * P[m].cacheWrite / 1e6, cr: t.cr * P[m].cacheRead / 1e6, out: t.out * P[m].output / 1e6 })
+const tokens = () => ({ in: num('in'), cw: num('cw'), cr: num('cr'), out: num('out') })
+function render() {
+  const c = cost($('m').value, tokens()), n = Math.max(1, num('n'))
+  for (const k of ['in', 'cw', 'cr', 'out']) $('c-' + k).textContent = usd(c[k] * n)
+  $('c-t').textContent = usd((c.in + c.cw + c.cr + c.out) * n)
+  const body = $('tbl').querySelector('tbody')
+  body.innerHTML = Object.keys(P).map(m => { const x = cost(m, tokens()), t = x.in + x.cw + x.cr + x.out; return '<tr><td>' + m + '</td><td>' + usd(t) + '</td><td>' + usd(t * n) + '</td></tr>' }).join('')
+}
+document.querySelectorAll('input, select').forEach(e => e.addEventListener('input', render))
+$('all').addEventListener('click', () => { $('tbl').hidden = !$('tbl').hidden })
+render()
+</script>
+</body>
+</html>

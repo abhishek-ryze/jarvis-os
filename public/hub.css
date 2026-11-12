@@ -1,0 +1,96 @@
+/* hub work package: artifacts, micro apps, Recos. Palette and chamfer match parts.css. */
+.hub-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px }
+.hub-chips .chip, .rc-side .chip, .chips-inline .chip { cursor: pointer }
+.hub-q { width: 100%; flex: none; margin-bottom: 6px }
+#artStat { margin-bottom: 6px; font-variant-numeric: tabular-nums }
+.hub-nm { display: flex; align-items: center; gap: 8px; min-width: 0 }
+.hub-nm a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.ai { flex: none; color: var(--cyan) }
+.hub-code { padding: 6px 0; border-top: 1px solid #0e222a }
+.hub-code code { display: block; padding: 8px 12px; background: var(--bg); border: 1px solid var(--line); font: 12px/1.5 var(--mono); color: var(--cyan); overflow-wrap: anywhere }
+
+/* hover preview */
+.hub-prev { display: none; position: fixed; z-index: 50; width: 240px; padding: 10px; background: rgba(8, 16, 23, .98); border: 1px solid var(--cyan-dim); pointer-events: none; font: 12px var(--mono) }
+.hub-prev img { display: block; width: 100%; max-height: 160px; object-fit: contain; background: var(--bg); margin-bottom: 8px }
+.hub-prev p { overflow-wrap: anywhere }
+
+/* artifact card */
+.hub-card { display: grid; gap: 8px }
+.hub-card h3 { font: 600 16px var(--mono); overflow-wrap: anywhere }
+.hub-path { font: 12px/1.5 var(--mono); color: var(--muted); word-break: break-all }
+.hub-img { width: 100%; max-height: 240px; object-fit: contain; background: var(--bg); border: 1px solid var(--line) }
+.hub-tag-row { display: flex; flex-wrap: wrap; gap: 8px }
+.hub-tag { display: inline-block; padding: 2px 8px; border: 1px solid var(--line); font: 600 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted) }
+.hub-tag.l-high { color: var(--cyan); border-color: var(--cyan-dim) }
+.hub-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px }
+
+/* micro apps */
+.hub-apps { display: grid; gap: 8px }
+.hub-app { grid-template-columns: 40px 1fr; align-items: center; gap: 4px 12px; text-align: left; color: var(--text); cursor: pointer; font: inherit; min-height: 56px }
+.hub-app .gl { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--cyan-dim); color: var(--cyan); font: 600 18px var(--mono) }
+.hub-app .tx { display: grid; gap: 2px; min-width: 0 }
+.hub-app b { font: 600 13px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.hub-app i { font: 12px var(--mono); color: var(--muted); font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.hub-app:hover { --b: var(--cyan) }
+/* tools */
+.tool-row { align-items: center }
+.tool-row small { grid-column: 1; grid-row: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.tool-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.tool-row > b { white-space: nowrap }
+.tool-act { grid-column: 2; grid-row: 2; display: flex; gap: 8px; justify-content: flex-end }
+.tool-act .btn { display: inline-flex; align-items: center; text-decoration: none }
+.tool-dot { display: inline-block; width: 6px; height: 6px; margin-right: 8px; border-radius: 50%; background: var(--muted); vertical-align: 1px }
+.tool-dot.s-on { background: var(--cyan); box-shadow: 0 0 6px var(--cyan) }
+.tool-dot.s-busy { background: var(--cyan-dim) }
+dialog.modal.hubwide { max-width: min(1200px, calc(100vw - 64px)) }
+dialog.modal.hubxl { max-width: min(1500px, calc(100vw - 64px)) }
+.hub-frame { width: 100%; height: min(72vh, 760px); border: 1px solid var(--line); background: var(--bg) }
+
+/* Recos */
+.rc { display: grid; grid-template-columns: 200px 1fr; gap: 16px; min-height: 60vh }
+.rc-side { display: flex; flex-direction: column; align-items: stretch; gap: 8px }
+.rc-side .chip { justify-content: space-between }
+.rc-main { display: grid; gap: 12px; align-content: start; min-width: 0 }
+.rc-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap }
+.rc-bar .chips-inline { display: flex; gap: 8px }
+.rc-bar .num { margin-left: auto }
+.rc-bar .btn:disabled { opacity: .4; cursor: default }
+.rc-body.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-height: 68vh; overflow: auto; padding-right: 4px }
+.rc-body.list { display: grid; gap: 8px; max-height: 68vh; overflow: auto; padding-right: 4px }
+.rc-card { gap: 8px; align-content: start }
+.rc-card h3 { font: 600 14px var(--mono); overflow-wrap: anywhere }
+.rc-card.in { --b: var(--orange); border-color: var(--orange) }
+.rc-ben { font: 13px/1.5 var(--mono); color: var(--cyan) }
+.rc-do { font: 12px/1.5 var(--mono); color: var(--text); overflow-wrap: anywhere }
+.rc-pick { display: flex; align-items: center; gap: 8px; font: 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); min-height: 32px; cursor: pointer }
+.rc-pick input { width: 18px; height: 18px; accent-color: var(--orange) }
+.rc-card textarea { min-height: 44px; height: 44px }
+.rc-body.list .rc-card { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto 160px minmax(0, 2fr); align-items: center; gap: 12px; padding: 8px 12px }
+.rc-body.list .rc-do { display: none }
+.rc-body.list .rc-ben { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.rc-body.list .hub-tag-row { flex-wrap: nowrap }
+.rc-body.list textarea { min-height: 36px; height: 36px; padding: 6px 12px }
+
+/* S4 density: 2-line rows, long meta on hover or focus, N more, teach text behind a summary */
+li.row b.t-meta { color: var(--muted); font: 400 var(--t-sm, 12px) var(--mono) }
+#apUnused { max-height: none }
+/* Unused spans both rows of the right column, so a short Apps panel leaves no gap above Tools */
+@media (min-width: 961px) { [data-page=Apps] > .panel:has(#apUnused) { grid-row: span 2 } }
+.ap-row { cursor: default }
+.ap-row:hover, .ap-row:focus-visible { background-color: var(--panel); box-shadow: inset 2px 0 var(--cyan) }
+.ap-row .t-body { font: 400 var(--t-md, 13px) system-ui, "Segoe UI", sans-serif; color: var(--text) }
+li.row.ap-row b.t-num { font: 600 var(--t-xl, 22px)/1.1 var(--mono); color: var(--text) }
+.ap-row small .ap-l, .ap-row:hover small .ap-s, .ap-row:focus-visible small .ap-s { display: none }
+.ap-row:hover small .ap-l, .ap-row:focus-visible small .ap-l { display: inline }
+.ap-row small em { font-style: normal; color: var(--orange) }
+.teach { margin-top: 8px; font-size: var(--t-sm, 12px); color: var(--muted) }
+.teach summary { cursor: pointer; font: 600 var(--t-xs, 11px) var(--mono); letter-spacing: var(--trk-cap, .12em); text-transform: uppercase }
+.teach summary:hover, .teach summary:focus-visible { color: var(--cyan) }
+.teach p { margin-top: 6px; font: 400 var(--t-sm, 12px)/1.5 var(--mono) }
+
+/* Run history panel */
+.rh-row { grid-template-columns: minmax(0, 1fr) auto }
+.rh-row b.st-running { color: var(--cyan) }
+li.row.rh-row small { white-space: normal }
+.rh-act { grid-column: 1 / -1; margin-top: 2px }
+#runHist .btn { min-height: 32px; height: 32px; font-size: var(--t-xs) }

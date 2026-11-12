@@ -1,0 +1,112 @@
+/* S4 FX: background layer, post layer, reticle cursor, boot, scan band, glints. DOM comes from fx.js.
+   Only opacity and leaf pseudos animate on app elements, so fixed children (#cv.full, .dial.mini, #stageUI) keep their containing block. */
+
+/* cover until fx.js starts the boot, so the UI does not flash first; falls away by itself if JS fails */
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.fx-ready) body::after { content: ""; position: fixed; inset: 0; z-index: 2147483640; background: #05080b; animation: fx-gone 0s 2.5s forwards }
+}
+@keyframes fx-gone { to { visibility: hidden } }
+
+/* ---------- WebGL background ---------- */
+.fx-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 1.2s ease }
+.fx-bg.on { opacity: 1 }
+body.brain .fx-bg { visibility: hidden }
+
+/* ---------- post: grain, vignette, scanlines (plain alpha, no blend modes) ---------- */
+.fx-post { position: fixed; inset: 0; z-index: 2147483600; pointer-events: none; overflow: hidden;
+  background:
+    radial-gradient(ellipse 75% 70% at 50% 50%, transparent 62%, rgba(1, 3, 5, .34) 100%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, .07) 0 1px, transparent 1px 3px) }
+.fx-post::before { content: ""; position: absolute; inset: -128px; opacity: .045;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.4 -.2'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: fx-grain .9s steps(6) infinite }
+@keyframes fx-grain { 0% { transform: translate(0, 0) } 20% { transform: translate(-37px, 21px) } 40% { transform: translate(52px, -44px) } 60% { transform: translate(-18px, 63px) } 80% { transform: translate(71px, 12px) } 100% { transform: translate(-60px, -30px) } }
+
+/* ---------- scan band: once after boot, then every 18 s ---------- */
+.fx-scan { position: fixed; left: 0; right: 0; top: 0; height: 160px; z-index: 2147483590; pointer-events: none; transform: translateY(-170px);
+  background: linear-gradient(transparent, rgba(56, 214, 245, .025) 60%, rgba(56, 214, 245, .09) 97%, rgba(160, 240, 255, .22) 99.4%, transparent) }
+.fx-scan.go { animation: fx-scan 18s cubic-bezier(.3, .6, .4, 1) infinite }
+@keyframes fx-scan { 0% { transform: translateY(-170px) } 11% { transform: translateY(100vh) } 100% { transform: translateY(100vh) } }
+
+/* ---------- chromatic edge: corner brackets and brand only, text stays crisp ---------- */
+.panel::before { filter: drop-shadow(-1px 0 rgba(255, 79, 94, .55)) drop-shadow(1px 0 rgba(120, 236, 255, .6)) }
+.brand { text-shadow: -.6px 0 rgba(255, 79, 94, .45), .6px 0 rgba(56, 214, 245, .5), 0 0 12px rgba(56, 214, 245, .25) }
+
+/* ---------- panel edge glint on hover ---------- */
+.panel::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 40%, rgba(56, 214, 245, .07) 47%, rgba(190, 245, 255, .16) 50%, rgba(56, 214, 245, .07) 53%, transparent 60%) no-repeat;
+  background-size: 250% 100%; background-position: 140% 0; opacity: 0; transition: opacity .3s }
+.panel:hover::after { opacity: 1; background-position: -40% 0; transition: background-position .9s cubic-bezier(.3, .6, .3, 1), opacity .15s }
+
+/* ---------- reticle cursor ---------- */
+html.fx-rc:not(:has(dialog[open])), html.fx-rc:not(:has(dialog[open])) * { cursor: none !important }
+html.fx-rc :is(input:not([type=range], [type=checkbox], [type=radio], [type=button], [type=submit]), textarea, [contenteditable=""], [contenteditable=true]) { cursor: text !important }
+.fx-cur, .fx-lock, .fx-ov { position: fixed; left: 0; top: 0; pointer-events: none; display: none }
+html.fx-rc:not(.fx-text):not(:has(dialog[open])) :is(.fx-cur, .fx-lock) { display: block }
+/* overlay always on so FX.pulse shows without a prior mouse move; idle when empty */
+.fx-ov { display: block; width: 100%; height: 100%; z-index: 2147483610 }
+.fx-cur { z-index: 2147483647; width: 0; height: 0; will-change: transform }
+.fx-cur svg { position: absolute; left: -20px; top: -20px; width: 40px; height: 40px; overflow: visible; fill: none; stroke: #38d6f5; stroke-width: 1.4;
+  filter: drop-shadow(0 0 3px rgba(56, 214, 245, .7)); transition: transform .18s cubic-bezier(.2, .8, .2, 1) }
+.fx-cur circle { fill: #e6f9ff; stroke: none; transition: fill .15s }
+.fx-cur-spin { animation: fx-spin 6s linear infinite; transform-origin: 0 0 }
+.fx-cur-x { stroke: rgba(56, 214, 245, .55); transition: opacity .15s }
+.fx-cur.on svg { transform: scale(.62) rotate(45deg) }
+.fx-cur.on circle { fill: #ff6a3d }
+.fx-cur.on .fx-cur-x { opacity: 0 }
+@keyframes fx-spin { to { transform: rotate(360deg) } }
+
+/* lock-on brackets snap to the hovered control */
+.fx-lock { z-index: 2147483620; opacity: 0; transition: opacity .12s, transform .14s cubic-bezier(.2, .8, .2, 1), width .14s cubic-bezier(.2, .8, .2, 1), height .14s cubic-bezier(.2, .8, .2, 1) }
+.fx-lock.on { opacity: 1 }
+.fx-lock i { position: absolute; width: 8px; height: 8px; border: 0 solid #38d6f5; filter: drop-shadow(0 0 2px rgba(56, 214, 245, .8)) }
+.fx-lock i:nth-child(1) { left: 0; top: 0; border-width: 1.5px 0 0 1.5px; --dx: -6px; --dy: -6px }
+.fx-lock i:nth-child(2) { right: 0; top: 0; border-width: 1.5px 1.5px 0 0; --dx: 6px; --dy: -6px }
+.fx-lock i:nth-child(3) { right: 0; bottom: 0; border-width: 0 1.5px 1.5px 0; --dx: 6px; --dy: 6px }
+.fx-lock i:nth-child(4) { left: 0; bottom: 0; border-width: 0 0 1.5px 1.5px; --dx: -6px; --dy: 6px }
+.fx-lock.snap i { animation: fx-snap .26s cubic-bezier(.2, .8, .2, 1) }
+@keyframes fx-snap { from { transform: translate(var(--dx), var(--dy)); opacity: 0 } 60% { opacity: 1 } to { transform: none } }
+
+/* ---------- boot ---------- */
+.fx-boot { position: fixed; inset: 0; z-index: 2147483640; pointer-events: none; background: rgba(5, 8, 11, .96); transition: opacity .45s ease }
+.fx-boot.out { opacity: 0 }
+.fx-boot.fast { transition-duration: .18s }
+.fx-boot svg { position: absolute; fill: none; stroke: #38d6f5; stroke-dasharray: 1; stroke-dashoffset: 1 }
+.fx-boot-g { inset: 0; width: 100%; height: 100%; stroke-width: 1; vector-effect: non-scaling-stroke; opacity: .5 }
+.fx-boot-g path { vector-effect: non-scaling-stroke; animation: fx-draw .7s cubic-bezier(.6, 0, .2, 1) forwards }
+.fx-boot-g path:nth-child(2) { animation-delay: .1s }
+.fx-boot-g path:nth-child(3) { animation-delay: .25s; stroke-width: 2 }
+.fx-boot-r { left: 50%; top: 50%; width: 260px; height: 260px; margin: -130px 0 0 -130px; stroke-width: 1.5; filter: drop-shadow(0 0 6px rgba(56, 214, 245, .8)) }
+.fx-boot-r circle { animation: fx-draw .8s cubic-bezier(.6, 0, .2, 1) .15s forwards; transform: rotate(-90deg) }
+.fx-boot-r .b { stroke-width: 4; stroke: rgba(56, 214, 245, .55); stroke-dasharray: .04 .02; animation-delay: .3s }
+.fx-boot-r .c { stroke: #ff6a3d; stroke-width: 1; animation-delay: .45s }
+@keyframes fx-draw { to { stroke-dashoffset: 0 } }
+.fx-boot-r .b { animation-name: fx-draw-seg }
+@keyframes fx-draw-seg { from { stroke-dashoffset: 1; opacity: 0 } to { stroke-dashoffset: 0; opacity: 1 } }
+.fx-boot-t { position: absolute; left: 50%; top: calc(50% + 160px); transform: translateX(-50%); display: grid; gap: 4px; min-width: 330px;
+  font: 12px/1.5 var(--mono, ui-monospace, Consolas, monospace); letter-spacing: .12em; color: #9aa4ab; white-space: pre }
+.fx-boot-t b { color: #e6e9eb; font-weight: 600; letter-spacing: .2em; margin-bottom: 6px; text-shadow: -.6px 0 rgba(255, 79, 94, .5), .6px 0 rgba(56, 214, 245, .6) }
+
+/* UI arrives with a short flicker (opacity only) as the boot fades */
+html.fx-booting #hdr, html.fx-booting #main, html.fx-booting .more, html.fx-booting .page { opacity: 0 }
+html.fx-in #hdr { animation: fx-flick .45s steps(1) both }
+html.fx-in #main, html.fx-in .page { animation: fx-flick .5s steps(1) .08s both }
+html.fx-in .more { animation: fx-flick .5s steps(1) .18s both }
+@keyframes fx-flick { 0% { opacity: 0 } 20% { opacity: .7 } 35% { opacity: .1 } 55% { opacity: 1 } 70% { opacity: .55 } 100% { opacity: 1 } }
+
+/* page open: panels rise in a short stagger; replays because [hidden] pages leave and re-enter layout.
+ Home widgets fade only (no transform), so the leader lines measure their final boxes */
+.page .panel { animation: fx-rise .42s cubic-bezier(.2, .8, .2, 1) both }
+.page .panel:nth-child(2) { animation-delay: .06s } .page .panel:nth-child(3) { animation-delay: .12s } .page .panel:nth-child(n+4) { animation-delay: .18s }
+#main .panel.w { animation: fx-fade .4s ease-out both }
+#main #right .panel.w { animation-delay: .08s }
+@keyframes fx-rise { from { opacity: 0; transform: translateY(10px) } }
+@keyframes fx-fade { from { opacity: 0 } }
+
+@media (prefers-reduced-motion: reduce) {
+  .page .panel, #main .panel.w { animation: none }
+  .fx-post::before, .fx-cur-spin, .fx-lock.snap i, .fx-scan.go { animation: none }
+  .fx-scan { display: none }
+  .fx-cur svg, .fx-lock, .panel:hover::after { transition: none }
+  .fx-bg { transition: none }
+}

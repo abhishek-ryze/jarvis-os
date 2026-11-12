@@ -1,0 +1,35 @@
+/* S4 type system: tokens + roles. Sizes 11/12/13/16/22/32/44 only, weights 400/600 only. */
+:root {
+  --t-xs: 11px;
+  --t-sm: 12px;
+  --t-md: 13px;
+  --t-lg: 16px;
+  --t-xl: 22px;
+  --t-2xl: 32px;
+  --t-hero: 44px;
+  --w-400: 400;
+  --w-600: 600;
+  --trk-cap: .12em;
+  --trk-num: 0;
+  --trk-wide: .18em;
+  --font-sans: system-ui, "Segoe UI", sans-serif;
+  --font-mono: var(--mono);
+}
+
+/* primary number: one per card */
+.t-num { font: var(--w-600) var(--t-2xl)/1.15 var(--font-mono); letter-spacing: var(--trk-num); color: var(--text); font-variant-numeric: tabular-nums }
+.t-num.xl { font-size: var(--t-xl) }
+.t-num.hero { font-size: var(--t-hero) }
+.t-num.warn { color: var(--orange) }
+
+/* label: sits above or left of its number */
+.t-lab { font: var(--w-600) var(--t-xs)/1.3 var(--font-mono); letter-spacing: var(--trk-cap); text-transform: uppercase; color: var(--muted) }
+
+/* row title: one line */
+.t-body { font: var(--w-400) var(--t-md)/1.4 var(--font-sans); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+
+/* meta: one line max */
+.t-meta { font: var(--w-400) var(--t-sm)/1.4 var(--font-sans); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+
+/* chip: outline tag */
+.t-chip { display: inline-flex; align-items: center; padding: 0 8px; border: 1px solid var(--line); font: var(--w-600) var(--t-xs)/1.6 var(--font-mono); letter-spacing: var(--trk-cap); text-transform: uppercase; color: var(--muted); white-space: nowrap }

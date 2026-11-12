@@ -1,0 +1,6 @@
+/* Git status badges (Home Projects panel) and the SETUP header chip. */
+li.row em.gb { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; font-style: normal }
+li.row em.gb:empty { display: none }
+li.row em.gb span { font: 400 var(--t-xs, 11px) var(--mono); letter-spacing: .04em; color: var(--muted); border: 1px solid var(--cyan-dim); padding: 0 6px; line-height: 16px }
+li.row em.gb span.hot { color: var(--orange); border-color: var(--orange) }
+.stamp #setupChip[hidden] { display: none }

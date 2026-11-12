@@ -1,0 +1,9 @@
+node_modules/
+cache/
+reports/
+runs.log
+data/
+notes/
+recos/
+demo/
+config.json

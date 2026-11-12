@@ -1,0 +1,97 @@
+/* Home cockpit (S4, option A). Loads after the index.html <style>; overrides the Home grid and dial.
+   Accent tints are for data series only, never text: violet (hour ring, skills), teal (7 d, spend). */
+:root { --violet: #a98bff; --teal: #3ee8c0 }
+
+/* ---------- layout: compact widget columns around a large dial ---------- */
+main { grid-template-columns: minmax(220px, min(300px, 17vw)) minmax(0, 1fr) minmax(220px, min(300px, 17vw)); gap: 32px; padding: 20px 24px; max-width: 1880px; align-items: center }
+.col { gap: 12px; grid-template-columns: minmax(0, 1fr) }
+.center { gap: 8px; --D: min(800px, calc((100vh - var(--hh, 61px) - 140px) / 1.2)) }
+/* D fits one screen: the hud overlay adds 10% each side, the gauge readouts about 80px below */
+.dial { width: var(--D); max-width: 100%; margin-block: calc(var(--D) * .1) calc(var(--D) * .1 - 8px) }
+.dial.mini { margin: 0 }
+.readout .v { font-size: 5cqw }
+
+/* ---------- widgets: 3 lines, one primary number ---------- */
+.panel.w { padding: 12px 14px; z-index: 1 }
+.panel.w h2 { margin-bottom: 6px }
+.panel.w .num { font-size: var(--t-xl); white-space: nowrap }
+.wrow { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: end; gap: 12px }
+.wrow svg.spark { height: 28px; margin: 0 0 4px }
+.wrow .label { margin: 0 0 4px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.panel.w > .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.panel.w .gauges svg { width: 100%; max-height: 56px }
+.panel.w .gauge { flex: 1; text-align: center }
+#models li.row { padding: 4px 0 6px; position: relative }
+#models li.row:nth-child(n+4) { display: none }
+#models li.row i { position: absolute; left: 0; right: 0; bottom: 0; height: 2px }
+#models li.row i::after { background: var(--violet) }
+#memory { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px }
+#memory li.row { display: inline-flex; gap: 6px; padding: 0; border: 0 }
+#memory li.row i, #memory li.row:has(.label) { display: none }
+#memory li.row span { color: var(--muted) }
+#rtMini, #needs .errrow small { display: none }
+#hLive .dot { display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 6px var(--cyan); vertical-align: 1px; animation: hudPulse 2s ease-in-out infinite }
+@keyframes hudPulse { 50% { opacity: .35 } }
+
+/* Needs you moved from the strip into the right column */
+#needs { grid-column: auto }
+#needList { display: block; max-height: 53px; overflow-y: auto; scroll-snap-type: y mandatory } /* one need row (52 to 53px) at a time, no half row */
+#needList > li { scroll-snap-align: start }
+/* compact: one line per need (title only), the list scrolls; error row one line */
+#needList li.need small { display: none }
+#needs .errrow span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+#needs .foot { flex-wrap: wrap; gap: 4px 12px; margin-top: 4px }
+#needs .errrow { min-height: 32px }
+#needs.hot { border-color: rgba(255, 106, 61, .45) }
+#needs.hot::before { border-color: var(--orange) }
+#needs.hot h2 { color: var(--orange) }
+
+/* ---------- dial: menu band labels, hud overlay ---------- */
+#ring .seg text { font-size: var(--segfs, 12px); letter-spacing: .08em }
+#hudRing { inset: -10%; width: 120%; height: 120%; pointer-events: none; overflow: visible }
+#hudRing text { font: 500 var(--hudfs, 11px) var(--mono); fill: var(--muted); letter-spacing: .08em }
+.dial.mini #hudRing, .dial.mini #hTicks { display: none }
+
+/* gauge readouts under the dial, hint between them */
+.greads { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 24px; align-items: start; width: min(100%, calc(var(--D, 560px) * 1.2)) }
+.gread { display: grid; gap: 2px; font: 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums }
+.gread.r { text-align: right }
+.gread b { font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--cyan) }
+.gread .gh { display: flex; gap: 12px; align-items: baseline }
+.gread.r .gh { justify-content: flex-end }
+.gread .gv { font: 600 var(--t-xl)/1.1 var(--mono); color: var(--text) }
+.gread .alert { color: var(--orange) }
+.gread .limedit { justify-self: start; height: 24px; margin-top: 4px; font-size: var(--t-xs) }
+.gread.r .limedit { justify-self: end }
+.gread .limgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+.gread .lbl { margin: 0 0 2px; font-size: var(--t-xs); letter-spacing: .06em }
+.gread .field { height: 32px; width: 100%; max-width: 160px; padding: 0 6px }
+.gread .limrow { display: flex; gap: 8px; margin-top: 4px }
+.gread .limrow .btn { min-height: 32px }
+#spTabs { margin: 4px 0 8px }
+#spTabs .chip { height: 28px }
+#spProj .row small { grid-column: 1 / -1; font: var(--t-xs) var(--mono); color: var(--muted) }
+.greads .hint { align-self: end; max-width: 340px; padding: 6px 10px; line-height: 1.9; background: rgb(5 8 11 / .82) }
+.greads .hint kbd { margin: 0 2px }
+.panel.w[data-go]:hover, .panel.w[data-go]:focus-visible { --b: var(--cyan); background-color: #0b1820 }
+
+html.still .spin, html.still #hLive .dot { animation: none }
+@media (prefers-reduced-motion: reduce) { #hLive .dot { animation: none } }
+@media (max-width: 960px) {
+  main { grid-template-columns: 1fr }
+  .center { --D: min(560px, 80vw) }
+  .greads { grid-template-columns: 1fr 1fr }
+  .greads .hint { display: none }
+}
+/* outer rings: hover readouts, gauge and its readout light together */
+.dial > svg:not(#ring) { pointer-events: none }
+#hHours .hr, #hGauges .hit { pointer-events: stroke; cursor: default }
+#hHours .hr { transition: opacity .15s }
+#hHours .hr:hover { opacity: 1; filter: drop-shadow(0 0 6px rgba(169, 139, 255, .8)) }
+#hGauges .gw > path:first-child { transition: stroke .15s }
+#hGauges .gw.lit > path:first-child { stroke: #17404c }
+#hGauges .gw.lit .glow { filter: drop-shadow(0 0 12px rgba(56, 214, 245, .9)) }
+#hGauges text { fill: var(--cyan) }
+.gread { transition: color .15s, text-shadow .15s }
+.gread.lit { color: var(--text) }
+.gread.lit b, .gread.lit .gv { text-shadow: 0 0 10px rgba(56, 214, 245, .7) }

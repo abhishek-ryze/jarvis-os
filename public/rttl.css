@@ -1,0 +1,102 @@
+/* rttl (Routines + Timeline) work package styles. Tokens come from index.html :root. */
+
+/* hint: one muted line with a small cyan marker, for "do this next" text */
+.hnt { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: var(--t-sm, 12px); line-height: 1.4; color: var(--muted) }
+.hnt::before { content: ""; flex: none; width: 6px; height: 6px; background: var(--cyan-dim) }
+/* picked-cell heading: area and day as a label, file count as a number */
+.hsel { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 0; font: 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted) }
+.hsel b { font: 600 var(--t-lg, 16px) var(--mono); letter-spacing: 0; color: var(--text); font-variant-numeric: tabular-nums }
+
+/* ----- Timeline grid ----- */
+#tlBar { display: flex; gap: 8px; margin-bottom: 10px }
+#tlBar .chip, #rtKpis .chip { cursor: pointer }
+#heat { gap: 2px }
+#heat .tlm { font: 600 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--cyan); text-align: left; overflow: visible }
+#heat .tlh { text-align: center; font-size: 12px; letter-spacing: .08em; text-transform: uppercase }
+#heat .tlo { text-align: center; font: 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; align-self: stretch; display: grid; place-items: center; background: #0a161d }
+#heat .tll { height: 28px; padding: 0 8px; text-align: left; background: transparent; border: 1px solid transparent; color: var(--text); font: 13px var(--mono); cursor: pointer; white-space: nowrap }
+#heat .tll:hover, #heat .tll[aria-pressed="true"] { color: var(--text); border-color: var(--cyan-dim) }
+#heat .tlc { height: 28px; min-width: 0; padding: 0; border: 1px solid transparent; background: #0e222a; color: transparent; cursor: pointer }
+#heat .tlc.on { background: rgb(56 214 245 / var(--a)) }
+#heat .tlc:not(.on) { cursor: default }
+#heat .tlc[aria-pressed="true"] { border-color: var(--orange) }
+#heat .tlc:hover { border-color: var(--cyan) }
+#heat .tlc:focus-visible { outline: 2px solid var(--text); outline-offset: 1px }
+#heat .d { font-size: 12px; color: var(--muted) }
+
+/* file list and inline diff */
+#heatList { list-style: none; padding: 0; margin-top: 8px; max-height: 520px }
+.tlf { padding: 6px 0; border-top: 1px solid #0e222a; display: grid; gap: 2px }
+.tlf:first-child { border-top: 0 }
+.tlr { display: flex; align-items: center; gap: 12px; min-width: 0 }
+.tlr b { font: 500 12px var(--mono); color: var(--cyan); font-variant-numeric: tabular-nums }
+.tlx { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 4px 0; color: var(--text); font: 600 13px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer }
+.tlx::before { content: "+ "; color: var(--cyan) }
+.tlx[aria-expanded="true"]::before { content: "- " }
+.tlx:hover { color: var(--cyan) }
+.tla { display: flex; gap: 8px; align-items: center }
+.tlf small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.cbtn.sm, .btn.sm, .rtcap .cbtn { min-height: 32px; padding: 0 12px; font-size: 11px; width: auto }
+.tld { margin: 6px 0 4px; display: grid; gap: 10px }
+.dev { border: 1px solid var(--line); background: var(--bg) }
+.dh { padding: 4px 10px; font: 12px var(--mono); color: var(--muted); border-bottom: 1px solid var(--line) }
+.dl { display: grid; grid-template-columns: 24px minmax(0, 1fr); font: 12px/1.5 var(--mono) }
+.dl .g { text-align: center; user-select: none }
+.dl code { font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; padding-right: 10px }
+.dl.add { color: var(--cyan); background: rgb(56 214 245 / .07) }
+.dl.del { color: var(--muted); background: rgb(154 164 171 / .06) }
+.dl.del code { text-decoration: line-through; text-decoration-color: var(--cyan-dim) }
+.dl.more[hidden] { display: none }
+.dmore { margin: 6px 10px; cursor: pointer }
+.dev .ph { padding: 6px 10px }
+
+/* ----- Routines ----- */
+.rtbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px }
+.rtchips { display: flex; flex-wrap: wrap; gap: 8px }
+.rtweek { display: flex; align-items: baseline; gap: 6px 20px; margin-left: auto }
+.rtweek .label { align-self: center }
+.rtsort { display: flex; align-items: center; gap: 8px }
+.rtsort select { min-height: 36px }
+.rtrow { grid-template-columns: minmax(0, 1.4fr) auto 56px 110px 90px 80px !important; align-items: center }
+.rtrow b { text-align: right }
+.rtrow b small { display: inline; grid-column: auto; color: var(--muted); font-size: 11px }
+.rtrow .rttime { text-align: center; color: var(--text) }
+.rtname { font-weight: 600 }
+.wd { display: inline-flex; gap: 3px }
+.wd i { width: 18px; height: 20px; display: grid; place-items: center; font: 600 11px var(--mono); font-style: normal; color: var(--cyan-dim); border: 1px solid #0e222a }
+.wd i.on { color: var(--bg); background: var(--cyan); border-color: var(--cyan) }
+/* the cap form sits on the meta line, right-aligned, so a row stays 2 lines */
+#rtList li.rtrow small { grid-column: 1 / 4 }
+.rtcap { grid-column: 4 / -1; justify-self: end; display: flex; flex-wrap: nowrap; align-items: center; gap: 8px }
+.rtcap .lbl { font: 11px var(--mono); white-space: nowrap }
+.rtcap .field { height: 28px; font-size: 12px }
+.rtcap .cbtn { min-height: 28px }
+.rtcap .status { margin: 0; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+
+/* week calendar */
+.rtcal { display: grid; grid-template-columns: 84px repeat(7, minmax(0, 1fr)); gap: 2px; font: 12px var(--mono) }
+.rtdh { padding: 4px 8px; font-weight: 600; letter-spacing: .12em; color: var(--cyan); text-align: center; border-bottom: 1px solid var(--cyan-dim) }
+.rtday h3 { padding: 4px 8px; font: 600 12px var(--mono); letter-spacing: .12em; color: var(--cyan-dim); text-align: center; border-bottom: 1px solid var(--line) }
+.rtbl { padding: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 11px }
+.rtcell { min-height: 48px; padding: 4px; display: flex; flex-direction: column; gap: 3px; background: #0a161d }
+.rtchip { padding: 3px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-left: 2px solid var(--cyan); background: rgb(56 214 245 / .12); color: var(--text) }
+.rtchip b { color: var(--cyan); font-weight: 600; font-variant-numeric: tabular-nums }
+
+/* teaching empty state */
+.rtteach { display: grid; gap: 10px; padding: 8px 0 4px; max-width: 760px }
+.rtteach h3 { font: 600 16px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--text) }
+.rtteach p { font-size: 13px; line-height: 1.5; color: var(--text) }
+.rtteach .lbl { margin: 6px 0 0 }
+.rtteach summary { list-style: none; width: fit-content; display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border: 1px solid var(--cyan-dim); color: var(--text); font: 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; cursor: pointer }
+.rtteach summary::-webkit-details-marker { display: none }
+.rtteach summary::before { content: "+"; margin-right: 8px; color: var(--cyan) }
+.rtteach details[open] summary::before { content: "-" }
+.rtteach summary:hover { border-color: var(--cyan) }
+.rtteach details > div { display: grid; gap: 10px; margin-top: 10px }
+#rtSrc .t-meta { color: var(--muted) }
+.rtex { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: var(--bg); border: 1px solid var(--cyan-dim) }
+.rtex code { flex: 1; min-width: 0; font: 13px/1.5 var(--mono); color: var(--cyan); overflow-wrap: anywhere }
+.rtrow .wd i { grid-column: auto; position: static; display: grid; height: 20px; background: transparent }
+.rtrow .wd i::after { content: none }
+.rtrow .wd i.on { background: var(--cyan) }
+.rtcap .field { flex: none; width: 96px }

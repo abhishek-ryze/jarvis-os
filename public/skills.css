@@ -1,0 +1,54 @@
+/* skills work package */
+/* deck cards: model and effort labels, one tint per model tier */
+.sk-tags { display: flex; flex-wrap: wrap; gap: 6px }
+.tag { font: 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border: 1px solid var(--line); color: var(--muted) }
+.tag.n { border-color: transparent; padding-left: 0; text-transform: none }
+.tag.m-haiku, .mx th.m-haiku, .mxc.m-haiku { --tier: #9aa4ab }
+.tag.m-sonnet, .mx th.m-sonnet, .mxc.m-sonnet { --tier: #38d6f5 }
+.tag.m-opus, .mx th.m-opus, .mxc.m-opus { --tier: #e6e9eb }
+.tag[class*="m-"] { color: var(--tier); border-color: var(--tier) }
+/* deck rows: name, run count (.t-num), two icon buttons; tags only when a row differs from the header default */
+.deck { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px }
+.deck .sk { grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 10px; padding: 8px 10px }
+.sk .t-num { font: 600 var(--t-xl, 22px)/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--text); text-align: right; min-width: 2ch }
+.sk .t-num.z { color: var(--muted); font-weight: 400 }
+.sk .acts .ib { width: 28px; height: 28px }
+.sk-more { grid-column: 1 / -1; justify-self: start }
+#skShared { text-transform: none; letter-spacing: .04em }
+.sk-moreb, .sk-moreb-wrap { margin-top: 8px }
+.skbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-bottom: 8px }
+.skbar .opts { margin: 0; align-items: center }
+#skSort { min-height: 32px; height: 32px; font-size: var(--t-xs) }
+#skStats .num { font: 600 var(--t-xl, 22px)/1.15 var(--mono) }
+#skStats .t-meta, .cfg .t-meta { font-size: var(--t-sm, 12px); color: var(--muted) }
+#skRows .t-body { font-size: var(--t-md, 13px); color: var(--text) }
+#skRows b.t-num { font: 600 var(--t-xl, 22px)/1 var(--mono); color: var(--text) }
+
+/* model x effort matrix */
+.mx { border-collapse: separate; border-spacing: 6px; margin: 4px 0 8px }
+.mx th { font: 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); text-align: center; font-weight: 400 }
+.mx th[scope="row"] { text-align: right; color: var(--tier) }
+.mxc { width: 92px; height: 52px; background: var(--bg); border: 1px solid var(--line); color: var(--text); font: 12px/1.3 var(--mono) }
+.mxc:hover, .mxc:focus-visible { border-color: var(--tier) }
+.mxc[aria-pressed="true"] { border-color: var(--tier); background: var(--seg-hover) }
+.mxc:focus-visible { outline: 2px solid #fff; outline-offset: 2px }
+
+/* stats: bubble chart, selected row, retire list */
+.bubsvg .bub { cursor: pointer; outline: none }
+.bubsvg .bub circle { fill: #38d6f5; fill-opacity: .18; stroke: #38d6f5 }
+.bubsvg .bub:hover circle, .bubsvg .bub:focus-visible circle { fill-opacity: .35 }
+.bubsvg .bub.sel circle { stroke: var(--orange); stroke-width: 2; fill: var(--orange); fill-opacity: .25 }
+.bubsvg .bub text { fill: var(--text); font: 12px Consolas, monospace; pointer-events: none }
+.bubsvg text.out { fill: var(--text); font: 12px Consolas, monospace }
+.bubsvg text.ax { fill: var(--muted); font: 12px Consolas, monospace }
+#skRows { list-style: none; padding: 0 }
+#skRows li.row { cursor: pointer }
+#skRows li.row:hover { background: var(--seg) }
+#skRows li.row.sel { background: var(--seg-hover); box-shadow: inset 2px 0 var(--orange) }
+#skNever { list-style: none; padding: 0 }
+#skNever li.row { align-items: center }
+#skNever li.row small { grid-column: auto }
+dialog.modal:has(.mx) { margin: auto; max-width: min(640px, calc(100vw - 32px)) }
+.bubsvg { display: block; max-width: 760px }
+/* skill analytics: unused flag */
+.sk-unused { font-style: normal; color: var(--muted); border: 1px solid var(--line, #1f6f80); padding: 0 4px }

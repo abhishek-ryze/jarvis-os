@@ -1,0 +1,2201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>%APP_NAME%</title>
+<script>
+// Display settings (Settings dialog in shell.js): set before CSS loads. Reduced motion also answers the
+// prefers-reduced-motion query, so every script that checks it (fx.js, brain.js, the inline script) obeys.
+(() => {
+  let a = {}
+  try { a = JSON.parse(localStorage.getItem('jarvis.a11y')) || {} } catch {}
+  const d = document.documentElement.dataset
+  for (const k of ['motion', 'contrast', 'font', 'fx', 'cursor', 'view', 'dof', 'sound']) if (a[k]) d[k] = a[k]
+  if (a.motion === 'reduce') {
+    const mm = matchMedia.bind(window)
+    window.matchMedia = q => /prefers-reduced-motion:\s*reduce/.test(q) ? { matches: true, media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} } : mm(q)
+  }
+})()
+</script>
+<link rel="stylesheet" href="type.css">
+<link rel="stylesheet" href="parts.css">
+<link rel="stylesheet" href="sessions.css">
+<link rel="stylesheet" href="live.css">
+<link rel="stylesheet" href="shell.css">
+<link rel="stylesheet" href="skills.css">
+<link rel="stylesheet" href="brain.css">
+<link rel="stylesheet" href="rttl.css">
+<link rel="stylesheet" href="hub.css">
+<link rel="stylesheet" href="git.css">
+<style>
+:root {
+  --bg: #05080b;
+  --panel: #081017;
+  --line: #12303a;
+  --cyan: #38d6f5;
+  --cyan-dim: #1f6f80;  /* decoration only */
+  --orange: #ff6a3d;    /* pointer, active, selected, run */
+  --text: #e6e9eb;
+  --muted: #9aa4ab;
+  --seg: #0a1820;
+  --seg-hover: #10303c;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --hh: 60px;           /* header height, set from JS */
+  --ease: cubic-bezier(.65, 0, .35, 1);
+}
+* { box-sizing: border-box; margin: 0 }
+[hidden] { display: none !important }
+body { background: var(--bg); color: var(--text); font: 13px/1.5 system-ui, "Segoe UI", sans-serif; min-height: 100vh; overflow-x: hidden }
+body.brain { overflow: hidden }
+button { font: inherit; color: inherit; cursor: pointer }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
+
+/* ---------- header: brand, search, chips (brain only), clock ---------- */
+header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; padding: 12px 24px; border-bottom: 1px solid var(--line); background: var(--bg) }
+body.brain header { position: fixed; top: 0; left: 0; right: 0; z-index: 40 }
+.brand { font: 600 13px var(--mono); letter-spacing: .2em; color: var(--text); white-space: nowrap }
+.brand b { color: var(--orange); font-weight: 600 }
+.brand span { color: var(--muted); font-weight: 400 }
+.back { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; background: transparent; border: 1px solid var(--cyan-dim); color: var(--text); font: 600 12px var(--mono); letter-spacing: .12em }
+.back:hover { border-color: var(--cyan) }
+.search { display: flex; align-items: center; gap: 12px; flex: 0 1 400px; min-width: 0; position: relative }
+.search svg { position: absolute; left: 10px; width: 16px; height: 16px; pointer-events: none }
+.search input { flex: 1; min-width: 0; height: 36px; padding: 0 12px 0 34px; background: var(--panel); border: 1px solid var(--line); border-radius: 0; color: var(--text); font: 13px var(--mono) }
+.search input::placeholder { color: var(--muted) }
+.search input:focus-visible { outline-offset: 0; border-color: var(--cyan) }
+.gs { position: absolute; top: 40px; left: 0; right: 0; z-index: 30; max-height: 60vh; overflow: auto; margin: 0; padding: 4px 0; list-style: none; background-color: var(--panel); border: 1px solid var(--cyan-dim) }
+.gs li { display: grid; grid-template-columns: 64px 1fr; gap: 0 8px; padding: 8px 12px; cursor: pointer; min-height: 44px }
+.gs li[aria-selected="true"], .gs li:hover { background-color: var(--bg); box-shadow: inset 2px 0 var(--orange) }
+.gs .k { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--cyan); grid-row: span 2 }
+.gs .t { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.gs .s { font: 400 12px var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.qcount { font: 400 12px var(--mono); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums }
+.chips { display: none; gap: 8px; flex-wrap: wrap; min-width: 0 }
+body.brain .chips { display: flex }
+.chip { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; background: transparent; border: 1px solid var(--line); color: var(--muted); font: 600 11px var(--mono); letter-spacing: var(--trk-cap); text-transform: uppercase; white-space: nowrap }
+.chip[aria-pressed="true"] { color: var(--text); border-color: var(--cyan-dim); background-color: var(--panel) }
+.chip b { font-weight: 400; color: var(--muted) }
+.sw { flex: none; width: 12px; height: 12px; overflow: visible }
+.stamp { font: 400 12px var(--mono); color: var(--muted); display: flex; align-items: center; gap: 16px; margin-left: auto }
+#sync:empty { display: none }
+@media (max-width: 1679px) { #clock { display: none } .search { flex-basis: 280px } }
+
+/* ---------- home: columns + dial ---------- */
+main { position: relative; display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(220px, 280px); gap: 40px; padding: 32px 24px; max-width: 1440px; margin: auto; align-items: start }
+.more > .col { display: flex; flex-direction: column; gap: 40px; min-width: 0 }
+.col { display: grid; gap: 20px; align-content: start; position: relative }
+h2 { font: 600 11px var(--mono); letter-spacing: .12em; color: var(--cyan); text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between; gap: 8px }
+h2 span { color: var(--muted); font-weight: 400; letter-spacing: .06em }
+.num { font: 600 32px/1.15 var(--mono); color: var(--text); font-variant-numeric: tabular-nums }
+.num small { font-size: 12px; font-family: var(--mono); color: var(--muted); font-weight: 400; margin-left: 6px }
+.label { font: 400 12px var(--mono); color: var(--muted) }
+.ph { font: italic 400 12px var(--mono); color: var(--muted); font-style: italic }
+svg.spark { width: 100%; height: 40px; display: block; margin: 8px 0 4px }
+.gauges { display: flex; justify-content: space-between; gap: 8px }
+ul { list-style: none; padding: 0 }
+li.row { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 12px; padding: 8px 0; font-size: 13px; border-top: 1px solid #0e222a }
+li.row:first-child { border-top: 0 }
+li.row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+li.row b { font: 600 12px var(--mono); color: var(--cyan); font-variant-numeric: tabular-nums }
+li.row i { grid-column: 1 / -1; height: 3px; background: #0e222a; position: relative; display: block }
+li.row i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--cyan-dim) }
+
+.center { display: grid; gap: 20px; justify-items: center; position: relative }
+.dial { container-type: inline-size; position: relative; width: 100%; max-width: 560px; aspect-ratio: 1 }
+.dial > svg { position: absolute; inset: 0; width: 100%; height: 100% }
+.spin { transform-box: view-box; transform-origin: 50% 50%; animation: spin 80s linear infinite }
+.spin.rev { animation-duration: 120s; animation-direction: reverse }
+@keyframes spin { to { transform: rotate(360deg) } }
+.glow { filter: drop-shadow(0 0 6px rgba(56, 214, 245, .55)) }
+#pointer { transform-box: view-box; transform-origin: 50% 50%; transition: transform .35s cubic-bezier(.2, .8, .2, 1) }
+#ring { pointer-events: none }
+.seg { cursor: pointer; outline: none; pointer-events: auto }
+.seg .shape { fill: var(--seg); stroke: var(--cyan-dim); stroke-width: 1.5; transition: fill .15s }
+.seg:hover .shape { fill: var(--seg-hover); stroke: var(--cyan) }
+.seg.active .shape { stroke: var(--orange); stroke-width: 2.5 }
+.seg:focus-visible .shape { stroke: #ffffff; stroke-width: 4 }
+.seg text { font: 600 13px var(--mono); letter-spacing: var(--trk-cap); fill: var(--text); pointer-events: none }
+.seg.run text { fill: var(--cyan) }
+.seg .mark { fill: var(--cyan); pointer-events: none }
+
+/* the neural core: canvas sits in the dial's inner circle (r 130 of 300) */
+#cv { display: block; touch-action: none }
+#cv.core { position: absolute; left: 28.333%; top: 28.333%; width: 43.334%; height: 43.334%; border-radius: 50%; pointer-events: none }
+#cv.full { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none; cursor: grab }
+#cv.full.live { pointer-events: auto }
+#coreBtn { position: absolute; left: 28.333%; top: 28.333%; width: 43.334%; height: 43.334%; border-radius: 50%; background: transparent; border: 0; padding: 0; cursor: zoom-in }
+.readout { position: absolute; left: 50%; top: 61%; transform: translate(-50%, -50%); width: 36%; text-align: center; pointer-events: none; text-shadow: 0 0 3px var(--bg), 0 0 8px var(--bg), 0 0 14px var(--bg) }
+.readout .k { font: 600 11px var(--mono); letter-spacing: .18em; color: var(--cyan); text-transform: uppercase }
+.readout .v { font: 600 5cqw/1.1 var(--mono); white-space: nowrap; color: var(--text); font-variant-numeric: tabular-nums; margin: 2px 0 }
+.readout .s { font: 400 11px/1.25 var(--mono); color: var(--muted); overflow-wrap: anywhere }
+#miniLabel { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 40%; text-align: center; font: 600 11px/1.2 var(--mono); letter-spacing: .12em; color: var(--text); text-transform: uppercase; overflow-wrap: anywhere; pointer-events: none }
+.hint { font: 400 12px var(--mono); color: var(--muted); text-align: center }
+.hint kbd { font: 600 12px var(--mono); color: var(--text); border: 1px solid var(--line); padding: 0 4px }
+
+/* mini dial: the same ring, docked in the corner while the brain is open */
+.dial.mini { position: fixed; right: 24px; bottom: 24px; width: 200px; z-index: 35; border-radius: 50%; background: radial-gradient(closest-side, rgba(5, 8, 11, .94) 99%, transparent 100%) }
+.dial.mini .seg text, .dial.mini .readout, .dial.mini #coreBtn { display: none }
+.dial.mini .seg:focus-visible .shape { stroke-width: 9 }
+.dial.mini #miniLabel { display: block }
+
+/* detail panel under the dial */
+.detail { width: 100%; max-width: 560px }
+.detail h3 { font: 600 16px var(--mono); color: var(--text); margin-bottom: 4px; overflow-wrap: anywhere }
+.detail p { font: 400 13px/1.5 system-ui, "Segoe UI", sans-serif; color: var(--muted); margin-bottom: 10px }
+.detail .stats { display: flex; flex-wrap: wrap; gap: 8px 20px; font: 400 12px var(--mono); color: var(--muted); margin-bottom: 12px }
+.detail .stats b { color: var(--text); font-weight: 600 }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end }
+.controls label { display: grid; gap: 4px; font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted) }
+select:focus-visible, .btn:focus-visible, .back:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px }
+.status { font: 400 12px var(--mono); color: var(--muted); margin-top: 10px }
+#leaders { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: visible }
+
+/* ---------- brain overlay (graph UI) ---------- */
+#stageUI { position: fixed; inset: 0; z-index: 30; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity .25s, visibility 0s .25s }
+body.brain #stageUI { opacity: 1; visibility: visible; transition: opacity .3s .45s }
+#stageUI > * { pointer-events: auto }
+#stageUI .panel { padding: 0; background-color: rgba(8, 16, 23, .94) }
+#stageUI .panel::before, #stageUI .panel::after { content: ""; position: absolute; width: 14px; height: 14px; border: 2px solid var(--cyan); pointer-events: none }
+#stageUI .panel::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0 }
+#stageUI .panel::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0 }
+.rail { position: absolute; top: calc(var(--hh) + 24px); left: 24px; width: 200px; padding: 12px 16px !important; display: grid; gap: 8px }
+.rail div, .rail dd { display: grid; min-width: 0 }
+.rail dt { font: 600 11px var(--mono); letter-spacing: .12em; color: var(--muted); text-transform: uppercase }
+.rail dd { font: 600 22px/1.3 var(--mono); color: var(--cyan); font-variant-numeric: tabular-nums; overflow: hidden }
+.rail .newest { display: block; width: 100%; padding: 0; background: none; border: 0; text-align: left; font: 400 13px/1.4 system-ui, "Segoe UI", sans-serif; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: underline; text-decoration-color: var(--cyan-dim); text-underline-offset: 3px }
+.rail .ago { display: block; font: 400 12px var(--mono); color: var(--muted) }
+.zoom { position: absolute; left: 24px; bottom: 24px; display: grid; gap: 4px }
+.zoom button { width: 36px; height: 36px; background: var(--panel); border: 1px solid var(--line); color: var(--cyan); font: 600 16px var(--mono) }
+.zoom button.fit { font-size: 12px; letter-spacing: 0 }
+.zread { position: absolute; left: 72px; bottom: 24px; font: 400 12px var(--mono); color: var(--muted); letter-spacing: 0; pointer-events: none !important; font-variant-numeric: tabular-nums }
+.msg { position: absolute; inset: var(--hh) 0 0 0; display: grid; place-items: center; padding: 24px; text-align: center; font: 400 13px var(--mono); color: var(--muted); pointer-events: none !important }
+.card { position: absolute; top: calc(var(--hh) + 24px); right: 24px; width: 340px; max-height: calc(100dvh - var(--hh) - 280px); display: flex; flex-direction: column }
+.card-scroll { overflow: auto; padding: 16px }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px }
+.tag { display: inline-flex; align-items: center; gap: 8px; font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text) }
+.x { width: 32px; height: 32px; display: grid; place-items: center; background: none; border: 1px solid var(--line); color: var(--text); font-size: 16px; line-height: 1 }
+.card h2 { display: block; margin: 12px 0; font: 600 16px/1.3 system-ui, "Segoe UI", sans-serif; letter-spacing: 0; text-transform: none; color: var(--text); overflow-wrap: anywhere }
+.meta { display: grid; gap: 8px; margin-bottom: 16px }
+.meta dt { font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted) }
+.meta dd { font: 400 13px/1.5 system-ui, "Segoe UI", sans-serif; overflow-wrap: anywhere }
+.meta .path { font: 400 12px/1.5 var(--mono); word-break: break-all }
+.cbtn { min-height: 40px; width: 100%; padding: 0 16px; background: transparent; color: var(--orange); border: 1px solid var(--orange); font: 600 12px var(--mono); letter-spacing: .12em }
+.card h3 { display: flex; justify-content: space-between; margin: 20px 0 8px; font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--cyan) }
+.card h3 span { color: var(--muted); font-weight: 400 }
+.links button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 4px 0; background: none; border: 0; border-top: 1px solid #10242c; text-align: left; font: 400 13px system-ui, "Segoe UI", sans-serif }
+.links button:hover { background: #0b1a22 }
+.links .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.links .kind { font: 400 12px var(--mono); color: var(--muted) }
+.empty { font: 400 13px/1.5 system-ui, "Segoe UI", sans-serif; color: var(--muted) }
+.cacts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+.cacts .btn { padding: 0 8px }
+.cacts .cbtn { min-height: 44px }
+.cstat { margin-top: 8px; font: 400 12px var(--mono); color: var(--muted) }
+.cstat:empty { display: none }
+.md { margin-top: 12px; padding: 12px; border: 1px solid var(--line); background-color: var(--bg); font: 400 13px/1.5 system-ui, "Segoe UI", sans-serif; overflow-wrap: anywhere }
+.md h4 { margin: 12px 0 4px; font: 600 13px var(--mono); color: var(--cyan) }
+.md h4:first-child { margin-top: 0 }
+.md p, .md li { margin: 4px 0 }
+.md ul { margin: 4px 0; padding-left: 18px }
+.md pre { margin: 8px 0; padding: 8px; overflow: auto; border: 1px solid var(--line); font: 400 12px/1.5 var(--mono); white-space: pre-wrap }
+.md code { font: 400 12px var(--mono) }
+.btools select { min-height: 32px; height: 32px; max-width: 200px }
+
+/* ---------- top nav ---------- */
+.nav { display: flex; flex-wrap: wrap; gap: 4px }
+.nav button { height: 36px; padding: 0 12px; background: transparent; border: 1px solid transparent; color: var(--muted); font: 600 12px var(--mono); letter-spacing: .12em; text-transform: uppercase }
+.nav button:hover { color: var(--text); border-color: var(--line) }
+.nav button[aria-current="page"] { color: var(--text); border-color: var(--line); box-shadow: inset 0 -2px var(--orange) }
+
+/* ---------- home details row and pages ---------- */
+.more, .page { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(220px, 280px); gap: 40px; padding: 0 24px 40px; max-width: 1440px; margin: auto; align-items: start }
+.page { padding-top: 32px }
+.page.wide { grid-template-columns: minmax(0, 1fr) minmax(260px, 340px) }
+.page.empty { grid-template-columns: minmax(0, 560px); justify-content: center }
+li.row small { grid-column: 1 / -1; font: 400 12px var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+li.row .sw { display: inline-block; margin-right: 8px; vertical-align: -1px }
+/* meta line starts under the title text, not under the type marker */
+li.row:has(> span > .sw) small { padding-left: 20px }
+/* even 2-column filter grid; the count sits at the right edge of each chip */
+#memTypes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px }
+#memTypes .chip { gap: 6px; padding: 0 8px; min-width: 0 }
+#memTypes .chip b { margin-left: auto }
+li.row a { color: var(--text); text-decoration-color: var(--cyan-dim); text-underline-offset: 3px }
+li.row b.st-done { color: var(--text) }
+li.row b.st-failed { color: var(--orange) }
+.scroll { max-height: 320px; overflow: auto }
+.kpis .num { font-size: 22px }
+.kpis { display: flex; flex-wrap: wrap; gap: 8px 32px; margin-bottom: 12px }
+.bars { display: flex; align-items: end; gap: 2px; height: 72px; border-bottom: 1px solid var(--line) }
+.bars i { flex: 1; min-height: 2px; background: var(--cyan-dim) }
+.bars i.today { background: var(--cyan) }
+.axis { display: flex; justify-content: space-between; font: 400 12px var(--mono); color: var(--muted); margin: 4px 0 12px }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px }
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px }
+.field { height: 36px; padding: 0 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 0; color: var(--text); font: 400 13px var(--mono); flex: 1; min-width: 0 }
+.field::placeholder { color: var(--muted) }
+.field:focus-visible { outline-offset: 0; border-color: var(--cyan) }
+.deckbar { display: flex; gap: 12px; align-items: center }
+.deck { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); grid-auto-flow: dense; gap: 8px; margin-top: 12px }
+.sk { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; align-items: center; padding: 8px 12px; border: 1px solid var(--line); background: var(--bg) }
+.sk.open { border-color: var(--cyan-dim) }
+.sk .nm { font: 600 13px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.sk .mt { grid-column: 1 / -1; font: 400 12px var(--mono); color: var(--muted) }
+.sk .acts { display: flex; gap: 4px }
+.ib { width: 36px; height: 36px; display: grid; place-items: center; background: transparent; border: 1px solid var(--line); color: var(--cyan) }
+.ib:hover { border-color: var(--cyan) }
+.ib svg { width: 12px; height: 12px }
+.cfg { grid-column: 1 / -1; display: grid; gap: 12px; padding: 12px 16px; border: 1px solid var(--cyan-dim); background: var(--panel) }
+.lbl { display: block; font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px }
+textarea { display: block; width: 100%; min-height: 72px; padding: 8px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 0; color: var(--text); font: 400 13px var(--mono); resize: vertical }
+textarea:focus-visible { outline-offset: 0; border-color: var(--cyan) }
+.span { grid-column: 1 / -1; min-width: 0 }
+.scroll.tall { max-height: 640px }
+h2.sub { margin-top: 24px }
+.report { margin-top: 12px; border-top: 1px solid var(--line) }
+.report pre { max-height: 420px; overflow: auto; margin: 8px 0 0; padding: 8px 12px; background: var(--bg); border: 1px solid var(--line); font: 400 12px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere }
+.heat { display: grid; grid-template-columns: 88px repeat(30, minmax(24px, 1fr)); gap: 2px; overflow-x: auto; font: 400 12px var(--mono); color: var(--muted) }
+.heat span { align-self: center; white-space: nowrap }
+.heat .d { text-align: center }
+.heat button { height: 28px; min-width: 24px; padding: 0; border: 1px solid transparent; background: #0e222a; color: transparent }
+.heat button.on { background: rgb(56 214 245 / var(--a)) }
+.heat button[aria-pressed="true"] { border-color: var(--orange) }
+.heat button:hover { border-color: var(--cyan) }
+
+/* ---------- chamfer: cut top-right and bottom-left; the two gradients draw the cut edge in --b ---------- */
+.panel, .sk, .cfg, .report pre { --cut: 12px }
+.btn, select, .chip, .back, .ib, .cbtn, .zoom button, .x, .nav button, .field, .search input, textarea { --cut: 8px }
+:is(.panel, .sk, .cfg, .report pre, .btn, select, .chip, .back, .ib, .cbtn, .zoom button, .x, .nav button, .field, .search input, textarea) {
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+  background-image:
+    linear-gradient(45deg, transparent calc(50% - 1.5px), var(--b, var(--line)) calc(50% - 1.5px) 50%, transparent 50%),
+    linear-gradient(225deg, transparent calc(50% - 1.5px), var(--b, var(--line)) calc(50% - 1.5px) 50%, transparent 50%);
+  background-size: var(--cut) var(--cut);
+  background-position: top right, bottom left;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+}
+.chip[aria-pressed="true"], .sk.open, .cfg, .btn, select, .back { --b: var(--cyan-dim) }
+.btn.go, .cbtn { --b: var(--orange) }
+.nav button { --b: transparent }
+.nav button:hover, .nav button[aria-current="page"] { --b: var(--line) }
+:is(.btn, select, .back, .ib):hover, :is(.field, .search input, textarea):focus-visible { --b: var(--cyan) }
+/* clip-path also clips outlines, so focus rings sit inside the shape */
+:is(.btn, select, .chip, .back, .ib, .cbtn, .zoom button, .x, .nav button, .field, .search input, textarea):focus-visible { outline-offset: -4px }
+/* select: custom cyan chevron 12px from the right; restates the two chamfer gradients */
+select:not([multiple]) { appearance: none; padding-right: 32px;
+  background-image:
+    linear-gradient(45deg, transparent calc(50% - 1.5px), var(--b, var(--line)) calc(50% - 1.5px) 50%, transparent 50%),
+    linear-gradient(225deg, transparent calc(50% - 1.5px), var(--b, var(--line)) calc(50% - 1.5px) 50%, transparent 50%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2338d6f5' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-size: var(--cut) var(--cut), var(--cut) var(--cut), 10px 6px;
+  background-position: top right, bottom left, right 12px center;
+  background-repeat: no-repeat }
+
+/* ---------- scroll handle: tapered caps, thin stem, centre notch; no track ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent }
+::-webkit-scrollbar-thumb {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M0 0H8V2L6 6H2L0 2Z' fill='%2338d6f5'/%3E%3C/svg%3E") center top / 8px 6px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M2 0H6L8 4V6H0V4Z' fill='%2338d6f5'/%3E%3C/svg%3E") center bottom / 8px 6px no-repeat,
+    linear-gradient(var(--cyan) 0 0) center / 8px 2px no-repeat,
+    linear-gradient(var(--tb, var(--cyan-dim)) 0 0) center / 4px calc(100% - 8px) no-repeat;
+}
+::-webkit-scrollbar-thumb:horizontal {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='8'%3E%3Cpath d='M0 0H2L6 2V6L2 8H0Z' fill='%2338d6f5'/%3E%3C/svg%3E") left center / 6px 8px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='8'%3E%3Cpath d='M0 2L4 0H6V8H4L0 6Z' fill='%2338d6f5'/%3E%3C/svg%3E") right center / 6px 8px no-repeat,
+    linear-gradient(var(--cyan) 0 0) center / 2px 8px no-repeat,
+    linear-gradient(var(--tb, var(--cyan-dim)) 0 0) center / calc(100% - 8px) 4px no-repeat;
+}
+::-webkit-scrollbar-thumb:hover { --tb: var(--cyan) }
+@supports not selector(::-webkit-scrollbar) { * { scrollbar-width: thin; scrollbar-color: var(--cyan-dim) transparent } }
+
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation: none }
+  #pointer, .seg .shape, #stageUI, body.brain #stageUI { transition: none }
+}
+@media (max-width: 960px) {
+  main { grid-template-columns: 1fr; padding: 16px; gap: 16px }
+  .center { order: -1 }
+  #leaders, .hint { display: none }
+  header { padding: 12px 16px }
+  .more, .page, .page.wide { grid-template-columns: 1fr; padding: 0 16px 24px; gap: 16px }
+  .more > .col { gap: 16px }
+  .page { padding-top: 16px }
+}
+@media (max-width: 700px) {
+  header { gap: 12px }
+  .search { flex: 1 1 100%; order: 2 }
+  .search input, .back { height: 44px }
+  .chips { order: 4; flex: 1 1 100% }
+  .chip, .btools select { height: 44px }
+  .nav { order: 3; flex: 1 1 100%; display: grid; grid-template-columns: repeat(3, 1fr) }
+  .nav button, .field { height: 44px }
+  body.brain .nav { display: none }
+  .ib { width: 44px; height: 44px }
+  .heat { grid-template-columns: 72px repeat(30, 44px) }
+  .heat button { height: 44px }
+  .dial.mini { display: none }
+  .rail { top: calc(var(--hh) + 12px); left: 12px; right: 12px; width: auto; padding: 8px 12px !important; grid-template-columns: auto auto auto minmax(0, 1fr); gap: 16px }
+  .rail dd { font-size: 16px }
+  .rail .ago { display: none }
+  .zoom { left: 12px; bottom: 12px }
+  .zoom button { width: 44px; height: 44px }
+  .zread { left: 68px; bottom: 12px }
+  .card { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 40% }
+  body.brain .stamp { display: none }
+  .x { width: 44px; height: 44px }
+  .cbtn, .links button { min-height: 44px }
+  li.row a { display: inline-block; line-height: 44px }
+  .rail .newest { line-height: 44px }
+}
+</style>
+<link rel="stylesheet" href="hud.css">
+<link rel="stylesheet" href="fx.css">
+<link rel="stylesheet" href="next.css">
+<link rel="stylesheet" href="planner.css">
+<link rel="stylesheet" href="a11y.css">
+<link rel="stylesheet" href="depth.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }</script>
+</head>
+<body>
+<header id="hdr">
+  <button class="back" id="back" type="button" hidden aria-label="Back to the dial">&larr; BACK</button>
+  <div class="brand">%APP_BRAND%<span id="crumb" hidden> / BRAIN</span></div>
+  <nav class="nav" id="nav" aria-label="Pages">
+    <button type="button" data-go="Home" data-k="1" aria-current="page">Home</button>
+    <button type="button" data-go="Brain" data-k="2">Brain</button>
+    <button type="button" data-go="Timeline" data-k="3">Timeline</button>
+    <button type="button" data-go="Routines" data-k="4">Routines</button>
+    <button type="button" data-go="Skills" data-k="5">Skills</button>
+    <button type="button" data-go="Sessions" data-k="6">Sessions</button>
+    <button type="button" data-go="Apps" data-k="7">Apps</button>
+    <button type="button" data-go="Planner" data-k="8">Planner</button>
+  </nav>
+  <div class="search">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="#38d6f5" stroke-width="1.5"/><path d="M11 11l3.5 3.5" stroke="#38d6f5" stroke-width="1.5"/></svg>
+    <label class="sr" for="q">Search files</label>
+    <input id="q" type="search" placeholder="Search files   /" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="gs" aria-autocomplete="list">
+    <ul class="gs" id="gs" role="listbox" aria-label="Search results" hidden></ul>
+    <span class="qcount" id="qcount" aria-live="polite"></span>
+  </div>
+  <div class="chips" id="chips" role="group" aria-label="Show file types"></div>
+  <div class="chips btools" role="group" aria-label="Map tools">
+    <div class="bseg" id="bLayout" role="group" aria-label="Layout">
+      <button class="chip" type="button" data-lay="force" aria-pressed="true">Force</button>
+      <button class="chip" type="button" data-lay="circle" aria-pressed="false">Circle</button>
+      <button class="chip" type="button" data-lay="hex" aria-pressed="false">Hex</button>
+      <button class="chip" type="button" data-lay="rings" aria-pressed="false">Rings</button>
+      <button class="chip" type="button" data-lay="sphere" aria-pressed="false">Sphere</button>
+    </div>
+    <label class="sr" for="bFolder">Top folder</label>
+    <select id="bFolder"><option value="">All folders</option></select>
+    <button class="chip" id="bMotion" type="button" aria-pressed="true">Motion <b>on</b></button>
+    <button class="chip" id="bRefresh" type="button">Refresh</button>
+    <button class="chip" id="bAnim" type="button" aria-pressed="false">Animate</button>
+    <label class="bspeed" title="Files per second"><span>Speed</span><input type="range" id="bSpeed" min="5" max="120" step="5" value="30" aria-label="Animation speed, files per second"></label>
+    <output class="banimat" id="bAnimAt" aria-live="off"></output>
+  </div>
+  <div class="stamp"><button type="button" class="hl" id="hdrLive" title="Claude sessions active in the last 10 minutes">CLAUDE <b>0</b> live</button><button type="button" class="hl" id="dstamp" title="Reload data from disk">DATA --:--</button><button type="button" class="hl" id="setupChip" hidden></button><span id="sync">loading</span><span id="clock">--:--</span><button type="button" class="hl cog" id="a11yBtn" title="Display and accessibility settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div>
+</header>
+
+<main id="main">
+  <svg id="leaders" aria-hidden="true"></svg>
+
+  <div class="col" id="left">
+    <section class="panel w" data-leader data-go="#Sessions?days=7">
+      <h2>Tokens <span>last 7 days</span></h2>
+      <div class="wrow"><div class="num" id="tok7">--</div><svg class="spark" id="sparkTok" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+      <div class="label">Input, cache and output. Line: 14 UTC days.</div>
+    </section>
+    <section class="panel w" data-leader data-go="#Sessions?days=7">
+      <h2>Spend <span>est. API $</span></h2>
+      <div class="wrow"><div class="num" id="hSpend">--</div><svg class="spark s-teal" id="hSpendSpark" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+      <div class="label" id="hSpendSub">reading</div>
+    </section>
+    <section class="panel w" data-leader>
+      <h2>Cache <span>last 7 days</span></h2>
+      <div class="gauges">
+        <div class="gauge"><svg viewBox="0 0 120 72" id="gCache" role="img" aria-label="cache read share"></svg><div class="label">cache read</div></div>
+        <div class="gauge"><svg viewBox="0 0 120 72" id="gOut" role="img" aria-label="output share"></svg><div class="label">output</div></div>
+      </div>
+    </section>
+    <section class="panel w" data-leader>
+      <h2>Models <span>all time</span></h2>
+      <ul id="models"><li class="row"><span class="ph">loading</span></li></ul>
+    </section>
+    <section class="panel w" data-leader data-go="#Skills">
+      <h2>Skills <span>installed</span></h2>
+      <div class="wrow"><div class="num" id="hSkills">--</div><svg class="spark s-violet" id="hSkillsSpark" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+      <div class="label" id="hSkillsSub">reading</div>
+    </section>
+  </div>
+
+  <div class="center">
+    <div class="dial" id="dial">
+      <svg viewBox="-60 -60 720 720" id="hudRing" aria-hidden="true">
+        <g id="hHours"></g>
+        <g id="hGauges"></g>
+      </svg>
+      <svg viewBox="0 0 600 600" aria-hidden="true">
+        <circle cx="300" cy="300" r="299" fill="none" stroke="var(--line)" stroke-width="1"/>
+        <g id="hTicks" class="spin" style="animation-duration: 150s" stroke="var(--cyan-dim)"></g>
+        <g id="pointer"><path id="pointerArc" fill="none" stroke="var(--orange)" stroke-width="4"/></g>
+        <g class="spin rev">
+          <circle cx="300" cy="300" r="214" fill="none" stroke="var(--cyan-dim)" stroke-width="1" stroke-dasharray="3 9"/>
+        </g>
+        <g class="spin glow">
+          <circle cx="300" cy="300" r="194" fill="none" stroke="var(--cyan)" stroke-width="14" stroke-dasharray="6 4"/>
+        </g>
+        <circle cx="300" cy="300" r="184" fill="none" stroke="var(--cyan)" stroke-width="1.5"/>
+        <g class="spin rev">
+          <circle cx="300" cy="300" r="172" fill="none" stroke="var(--cyan-dim)" stroke-width="6" stroke-dasharray="40 10 4 10"/>
+        </g>
+        <g id="ticks" stroke="var(--cyan-dim)"></g>
+        <g class="spin">
+          <circle cx="300" cy="300" r="138" fill="none" stroke="var(--cyan-dim)" stroke-width="1" stroke-dasharray="2 8"/>
+        </g>
+        <circle cx="300" cy="300" r="131" fill="none" stroke="var(--line)" stroke-width="1.5"/>
+      </svg>
+      <canvas id="cv" class="core" role="img" aria-label="Force graph of Claude files and their links. Use search to find and open a file."></canvas>
+      <button id="coreBtn" type="button" tabindex="-1" aria-label="Open brain map" title="Open brain map (B)"></button>
+      <svg viewBox="0 0 600 600" id="ring" role="toolbar" aria-label="Radial menu: views and quick-run skills. Arrow keys move, Enter opens." aria-orientation="horizontal"></svg>
+      <div class="readout" aria-live="polite">
+        <div class="k" id="rk">Tokens today</div>
+        <div class="v" id="rv">--</div>
+        <div class="s" id="rs">UTC day, all sessions</div>
+      </div>
+      <div id="miniLabel" aria-hidden="true">Brain</div>
+    </div>
+    <div class="greads">
+      <div class="gread" id="g5"><b>5 h window</b><span>reading</span></div>
+      <p class="hint" id="hint"><kbd>Tab</kbd> to the dial, <kbd>&larr;</kbd><kbd>&rarr;</kbd> rotate, <kbd>Enter</kbd> open, <kbd>Esc</kbd> close, <kbd>B</kbd> brain, <kbd>/</kbd> search</p>
+      <div class="gread r" id="g7"><b>7 d window</b><span>reading</span></div>
+    </div>
+
+  </div>
+
+  <div class="col" id="right">
+    <section class="panel w" id="needs" data-leader>
+      <h2>Needs you <span id="needN" aria-live="polite"></span></h2>
+      <ul id="needList"><li class="row"><span class="ph">loading</span></li></ul>
+      <div class="foot">
+        <button type="button" class="errrow" id="errRow"><span>Tool errors: reading</span></button>
+        <span class="status" id="alertSt" aria-live="polite"></span>
+        <button class="btn" id="alertBtn" type="button" aria-pressed="false">Enable alerts</button>
+      </div>
+    </section>
+    <section class="panel w" data-leader data-go="#Sessions?days=7">
+      <h2>Sessions <span id="hLive">last 7 days</span></h2>
+      <div class="wrow"><div class="num" id="ses7">--</div><svg class="spark" id="sparkSes" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+      <div class="label">Sessions per UTC day, last 14 days.</div>
+    </section>
+    <section class="panel detail" id="detail" hidden aria-labelledby="dTitle">
+      <h2><span id="dKind">view</span><span id="dSrc"></span></h2>
+      <h3 id="dTitle"></h3>
+      <p id="dBody"></p>
+      <div class="stats" id="dStats"></div>
+      <div class="controls" id="dControls" hidden>
+        <label>Model <select id="dModel"></select></label>
+        <label>Effort <select id="dEffort"></select></label>
+        <label>Mode <select id="dMode"><option value="">config default</option><option>plan</option><option>acceptEdits</option></select></label>
+        <button class="btn go" id="dRun" type="button">Run skill</button>
+        <button class="btn" id="dClose" type="button">Close</button>
+      </div>
+      <div class="status" id="dStatus" aria-live="polite"></div>
+    </section>
+    <section class="panel w" data-leader data-go="#Brain">
+      <h2>Memory <span>by type</span></h2>
+      <div class="num" id="memCount">--</div>
+      <ul id="memory"><li class="row"><span class="ph">loading</span></li></ul>
+    </section>
+    <section class="panel w" data-leader data-go="#Skills">
+      <h2>Runs <span>since server start</span></h2>
+      <div class="wrow"><div class="num" id="runCount">--</div><p class="label" id="rtLine">Routines: reading</p></div>
+      <div class="label" id="runLast">headless skill runs from this dashboard</div>
+      <ul class="rtmini" id="rtMini" aria-label="Next routines"></ul>
+    </section>
+  </div>
+</main>
+
+<section class="more" id="homeMore" aria-label="Details">
+  <div class="col">
+    <section class="panel">
+      <h2>Projects <span id="projCount"></span></h2>
+      <ul class="scroll" id="projects"><li class="row"><span class="ph">loading</span></li></ul>
+    </section>
+    <section class="panel">
+      <h2>Spend <span>est. API $</span></h2>
+      <div class="kpis" id="spend"><span class="ph">loading</span></div>
+      <p class="label" id="limits"></p>
+      <h2 class="sub">By project <span>est. API $</span></h2>
+      <div class="opts" id="spTabs" role="group" aria-label="Spend window"></div>
+      <ul id="spProj"><li class="row"><span class="ph">loading</span></li></ul>
+      <h2 class="sub">Burn rate <span class="tipw"><button type="button" class="info" aria-label="How burn rate is computed" aria-describedby="tipBurn">i</button><span class="tip" role="tooltip" id="tipBurn">Pace: all tokens (input, output, cache write, cache read) of the last 30 min, per minute. 5 h reset is when the oldest tokens leave; 7 d checks the next 7 days. Limit time is linear, est.</span></span></h2>
+      <ul id="burn"><li class="row"><span class="ph">loading</span></li></ul>
+      <p class="label teach" id="burnTeach"></p>
+      <p class="status" id="cold">Cold-cache check: reading 30 days of logs.</p>
+    </section>
+    <section class="panel">
+      <h2>Artifacts <span id="artN"></span></h2>
+      <div class="hub-chips" id="artChips"></div>
+      <input class="field hub-q" id="artQ" type="search" placeholder="Filter artifacts" aria-label="Filter artifacts" autocomplete="off">
+      <p class="label" id="artStat"></p>
+      <ul class="scroll" id="arts"><li class="row"><span class="ph">loading</span></li></ul>
+    </section>
+  </div>
+  <div class="col">
+    <section class="panel">
+      <h2>Tokens <span>last 30 days</span></h2>
+      <div class="kpis" id="kpis"><span class="ph">loading</span></div>
+      <div class="bars" id="bars" role="img" aria-label="Tokens per UTC day, last 30 days"></div>
+      <div class="axis"><span id="ax0"></span><span>today</span></div>
+      <div class="opts" id="tabs" role="group" aria-label="Rank by"></div>
+      <ul id="rank"></ul>
+      <div class="foot"><span class="label" id="rankNote"></span><button class="btn" id="refresh" type="button">Refresh</button></div>
+    </section>
+    <section class="panel">
+      <h2>Live sessions <span><span id="liveN"></span> <span class="tipw"><button type="button" class="info" aria-label="How context and cache are computed" aria-describedby="tipLive">i</button><span class="tip" role="tooltip" id="tipLive">Context: last turn input + cache read + cache write, vs 200K (1M for [1m] models or past 200K). Cache time left uses the TTL of the last cache write (1 h or 5 min).</span></span></span></h2>
+      <ul class="scroll" id="live"><li class="row"><span class="ph">loading</span></li></ul>
+      <p class="label">Bar: context used. Click a row to open the session. Recache cost is est. at API cache-write prices.</p>
+    </section>
+  </div>
+  <div class="col">
+    <section class="panel" id="plToday" data-go="#Planner">
+      <h2>Today <span id="plTodayN"></span></h2>
+      <ul id="plTodayList"><li class="row"><span class="ph">loading</span></li></ul>
+    </section>
+    <section class="panel">
+      <h2>Memory <span id="memN"></span></h2>
+      <div class="opts" id="memTypes" role="group" aria-label="Filter memory by type"></div>
+      <ul class="scroll" id="memList"><li class="row"><span class="ph">loading</span></li></ul>
+    </section>
+    <section class="panel" id="hubApps"><h2>Micro apps</h2><p class="ph">loading</p></section>
+    <section class="panel" id="hubTools">
+      <h2>Tools <span class="tools-n"></span></h2>
+      <input class="field hub-q tools-q" type="search" placeholder="Filter tools" aria-label="Filter tools" autocomplete="off">
+      <ul class="scroll tools-list"><li class="row"><span class="ph">loading</span></li></ul>
+      <p class="label">From .claude/launch.json in every folder a session ran in. Start runs node entries only.</p>
+      <p class="status tools-stat" role="status"></p>
+    </section>
+  </div>
+</section>
+
+<section class="page wide" data-page="Skills" aria-label="Skills" hidden>
+  <section class="panel">
+    <h2>Skills <span id="skCount"></span></h2>
+    <div class="deckbar">
+      <label class="sr" for="skq">Filter skills</label>
+      <input class="field" id="skq" type="search" placeholder="Filter skills" autocomplete="off" spellcheck="false">
+      <span class="chip" id="pmode" title="Headless runs use this permission mode (config.json)"></span>
+      <span class="chip" id="skShared" title="What most skills use. A row shows a tag only when it differs."></span>
+    </div>
+    <p class="hnt">Press the play icon to run a skill, the sliders icon for model, effort and mode. The number is its run count.</p>
+    <p class="status" id="deckStatus" aria-live="polite"></p>
+    <div class="deck" id="deck"></div>
+  </section>
+  <section class="panel">
+    <h2>Runs <span id="runsN"></span></h2>
+    <ul id="runs"><li class="row"><span class="ph">loading</span></li></ul>
+    <div class="report" id="report" hidden>
+      <div class="foot"><span class="label" id="repMeta"></span><button class="btn" id="repClose" type="button">Close</button></div>
+      <pre id="repBody"></pre>
+    </div>
+    <h2 class="sub">Add a skill</h2>
+    <label class="lbl" for="addSk">What the skill does</label>
+    <textarea id="addSk" placeholder="Runs skill-creator in the background with this text"></textarea>
+    <div class="foot"><span class="status" id="addStatus" aria-live="polite"></span><button class="btn go" id="addGo" type="button">Add skill</button></div>
+  </section>
+  <section class="panel span" id="skStats"><h2>Skill stats</h2><p class="ph">loading</p></section>
+  <section class="panel span" id="skNotes"><h2>Fix notes</h2><p class="ph">loading</p></section>
+</section>
+<section class="page" data-page="Timeline" aria-label="Timeline" hidden>
+  <section class="panel span">
+    <h2>Timeline <span id="tlSub">files Claude edited, last 30 days</span></h2>
+    <div id="tlBar" role="group" aria-label="Range"></div>
+    <div class="heat" id="heat"><span class="ph">loading (the first build reads all logs, about 15 s)</span></div>
+    <p class="hnt" id="heatSel" aria-live="polite">Pick a cell to see its files.</p>
+    <ul class="scroll" id="heatList"></ul>
+  </section>
+</section>
+<section class="page wide" data-page="Routines" aria-label="Routines" hidden>
+  <section class="panel span">
+    <h2>Week <span>MON to SUN, by start time</span></h2>
+    <div id="rtCal"><span class="ph">loading</span></div>
+  </section>
+  <section class="panel">
+    <h2>Routines <span id="rtN"></span></h2>
+    <div class="kpis" id="rtKpis"><span class="ph">loading</span></div>
+    <ul id="rtList"></ul>
+  </section>
+  <section class="panel">
+    <h2>Sources <span>where routines are read from</span></h2>
+    <ul id="rtSrc"></ul>
+  </section>
+</section>
+<section class="page wide" data-page="Sessions" aria-label="Sessions" hidden>
+  <div id="sessRoot"><p class="ph">loading</p></div>
+</section>
+<section class="page wide" data-page="Planner" aria-label="Planner" hidden>
+  <section class="panel">
+    <h2>To do <span id="plTodoN"></span></h2>
+    <form class="pl-add" id="plTodoForm"><label class="sr" for="plTodoIn">New task</label><input class="field" id="plTodoIn" maxlength="300" placeholder="Add a task" autocomplete="off"><button class="btn" type="submit">Add</button></form>
+    <ul class="pl-todos" id="plTodos"><li class="row"><span class="ph">loading</span></li></ul>
+    <div class="foot"><button class="btn" id="plClear" type="button">Clear done</button><span class="status" id="plStat" role="status"></span></div>
+  </section>
+  <section class="panel pl-sched">
+    <h2>Schedule <span>next 14 days</span></h2>
+    <ul class="scroll tall" id="plEvents"><li class="row"><span class="ph">loading</span></li></ul>
+    <h2 class="sub">Add event</h2>
+    <form class="pl-ev" id="plEvForm">
+      <label class="sr" for="plEvT">Event title</label><input class="field" id="plEvT" maxlength="300" placeholder="Title" required autocomplete="off">
+      <label class="sr" for="plEvD">Date</label><input class="field" id="plEvD" type="date" required>
+      <label class="sr" for="plEvH">Time, optional</label><input class="field" id="plEvH" type="time">
+      <button class="btn" type="submit">Add event</button>
+    </form>
+    <h2 class="sub">Calendar feed <span id="plCalSt">not connected</span></h2>
+    <form class="pl-add" id="plCalForm"><label class="sr" for="plCalIn">Calendar iCal address</label><input class="field" id="plCalIn" placeholder="https://... .ics or webcal://..." autocomplete="off" spellcheck="false"><button class="btn" type="submit" id="plCalBtn">Connect</button></form>
+    <details class="teach"><summary>How to connect Google Calendar</summary><p>Google Calendar on the web: Settings, then your calendar, then Integrate calendar. Copy "Secret address in iCal format" and paste it here. The feed is read only. The address stays on this PC in data/planner.json. Outlook and Apple Calendar also give an iCal address.</p></details>
+  </section>
+  <section class="panel">
+    <h2>Notes <span>saved as you type</span></h2>
+    <label class="sr" for="plNotes">Notes</label>
+    <textarea id="plNotes" class="pl-notes" maxlength="50000" placeholder="Quick notes"></textarea>
+  </section>
+</section>
+<section class="page wide" data-page="Apps" aria-label="Apps" hidden>
+  <section class="panel">
+    <h2>Apps <span id="apN"></span></h2>
+    <ul class="scroll tall" id="apList"><li class="row"><span class="ph">loading</span></li></ul>
+    <details class="teach"><summary>How these numbers are counted</summary><p>Calls from session logs. Errors: failed tool calls in 7 days, user denials not counted. Tool-list overhead per session is est. Hover or focus a row for tools and overhead.</p></details>
+  </section>
+  <section class="panel">
+    <h2>Unused <span>in 30 days</span></h2>
+    <ul class="scroll" id="apUnused"></ul>
+    <div class="foot"><span class="status" id="auditStatus" aria-live="polite">Asks Claude for at most 3 connectors to add.</span><button class="btn go" id="audit" type="button">Copy audit prompt</button></div>
+  </section>
+  <section class="panel" id="apTools">
+    <h2>Tools <span class="tools-n"></span></h2>
+    <input class="field hub-q tools-q" type="search" placeholder="Filter tools" aria-label="Filter tools" autocomplete="off">
+    <ul class="scroll tall tools-list"><li class="row"><span class="ph">loading</span></li></ul>
+    <p class="label">From .claude/launch.json in every folder a session ran in. Start runs node entries only.</p>
+    <p class="status tools-stat" role="status"></p>
+  </section>
+</section>
+
+<div id="stageUI" inert>
+  <div class="msg" id="msg">Reading files</div>
+  <dl class="rail panel" id="rail" aria-label="Graph stats" hidden>
+    <div><dt>Nodes</dt><dd id="sNodes">0</dd></div>
+    <div><dt>Edges</dt><dd id="sEdges">0</dd></div>
+    <div><dt>Orphans</dt><dd id="sOrph">0</dd></div>
+    <div><dt>Newest</dt><dd><button class="newest" id="sNew"></button><span class="ago" id="sNewAgo"></span></dd></div>
+  </dl>
+  <div class="zoom" role="group" aria-label="Zoom">
+    <button id="zIn" aria-label="Zoom in">+</button>
+    <button id="zOut" aria-label="Zoom out">&minus;</button>
+    <button id="zFit" class="fit" aria-label="Fit graph to view">FIT</button>
+  </div>
+  <div class="zread" id="zread" aria-hidden="true"></div>
+  <div class="btip panel" id="bTip" aria-hidden="true" hidden>
+    <b id="tName"></b>
+    <dl><dt>Dept</dt><dd id="tDept"></dd><dt>Type</dt><dd id="tType"></dd><dt>Size</dt><dd id="tSize"></dd><dt>Age</dt><dd id="tAge"></dd></dl>
+    <span class="tpath" id="tPath"></span>
+  </div>
+  <section class="card panel" id="card" aria-labelledby="cTitle" hidden>
+    <div class="card-scroll">
+      <div class="card-head">
+        <span class="tag" id="cType"></span>
+        <button class="x" id="cClose" aria-label="Close file card">&times;</button>
+      </div>
+      <h2 id="cTitle"></h2>
+      <ul class="ctags" id="cTags" aria-label="Tags"></ul>
+      <dl class="meta">
+        <div><dt>Path</dt><dd class="path" id="cPath"></dd></div>
+        <div><dt>Modified</dt><dd id="cMod"></dd></div>
+        <div><dt>Size</dt><dd id="cSize"></dd></div>
+        <div><dt>Links</dt><dd id="cLinkN"></dd></div>
+      </dl>
+      <div class="cacts" role="group" aria-label="File actions">
+        <button class="btn" id="cView" type="button" aria-expanded="false" aria-controls="cPrev">View here</button>
+        <button class="btn" id="cFly" type="button">Fly to</button>
+        <button class="btn" id="cOpen" type="button">Open on device</button>
+        <button class="cbtn" id="cCopy" type="button">COPY PATH</button>
+      </div>
+      <p class="cstat" id="cStat" aria-live="polite"></p>
+      <div class="md" id="cPrev" aria-label="File preview" hidden></div>
+      <div class="clocal" role="group" aria-label="Local graph">
+        <button class="chip" id="cLocal" type="button" aria-pressed="false">Local graph</button>
+        <span class="bseg" id="cDepth" role="group" aria-label="Depth">
+          <button class="chip" type="button" data-d="1" aria-pressed="true" aria-label="Depth 1">1</button>
+          <button class="chip" type="button" data-d="2" aria-pressed="false" aria-label="Depth 2">2</button>
+          <button class="chip" type="button" data-d="3" aria-pressed="false" aria-label="Depth 3">3</button>
+        </span>
+      </div>
+      <h3>Connections <span id="cCount"></span></h3>
+      <ul class="links" id="cLinks"></ul>
+    </div>
+  </section>
+</div>
+
+<script src="parts.js"></script>
+<script src="prompts.js"></script>
+<script>
+const $ = id => document.getElementById(id)
+const NS = 'http://www.w3.org/2000/svg'
+// Motion off (Brain toggle, brain.js) acts like reduced motion everywhere
+let reduce = matchMedia('(prefers-reduced-motion: reduce)').matches || (() => { try { return localStorage.getItem('aos.motion') === 'off' } catch { return false } })()
+const fmt = n => n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : String(n)
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const sum = t => t ? t.input + t.cacheWrite + t.cacheRead + t.output : 0
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
+const lerp = (a, b, e) => a + (b - a) * e
+function ago(iso) {
+  const s = (Date.now() - Date.parse(iso)) / 1000
+  if (s < 3600) return Math.max(1, Math.round(s / 60)) + ' min ago'
+  if (s < 86400) return Math.round(s / 3600) + ' h ago'
+  if (s < 86400 * 60) return Math.round(s / 86400) + ' d ago'
+  return Math.round(s / 86400 / 30) + ' mo ago'
+}
+// byDay keys are UTC dates (timestamp.slice(0, 10) in lib/scan.js)
+const utcDay = back => new Date(Date.now() - back * 864e5).toISOString().slice(0, 10)
+
+const dial = $('dial'), ring = $('ring'), cv = $('cv'), ctx = cv.getContext('2d'), card = $('card'), q = $('q'), hdr = $('hdr')
+let mode = 'home'   // home | in | brain | out
+
+// ================= dial (from A) =================
+const C = 300, R1 = 222, R2 = 298, CORE = 130
+const pt = (r, a) => [C + r * Math.sin(a * Math.PI / 180), C - r * Math.cos(a * Math.PI / 180)]
+const arc = (r, a0, a1) => { const [x0, y0] = pt(r, a0), [x1, y1] = pt(r, a1); return `M${x0} ${y0} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}` }
+const sector = (a0, a1) => { const [x0, y0] = pt(R1, a1), [x1, y1] = pt(R1, a0); return `${arc(R2, a0, a1)} L${x0} ${y0} A${R1} ${R1} 0 0 0 ${x1} ${y1} Z` }
+
+$('ticks').innerHTML = Array.from({ length: 72 }, (_, i) => {
+  const [x1, y1] = pt(146, i * 5), [x2, y2] = pt(i % 6 ? 152 : 158, i * 5)
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${i % 6 ? 1 : 2}"/>`
+}).join('')
+
+const pct = v => (v < .1 ? (v * 100).toFixed(1) : Math.round(v * 100)) + '%'
+const gauge = parts.gauge
+function spark(el, vals, color = 'var(--cyan)') {
+  const max = Math.max(...vals, 1), step = 200 / (vals.length - 1)
+  const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(38 - v / max * 34).toFixed(1)}`)
+  el.innerHTML = `<line x1="0" y1="38.5" x2="200" y2="38.5" stroke="#12303a"/>
+    <polygon points="0,38 ${pts.join(' ')} 200,38" fill="${color}" opacity=".12"/>
+    <polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`
+}
+
+let items = [], focusIdx = 0, activeIdx = -1, data = {}, ringHover = null, leaveT = 0
+function setReadout(k, v, s) { $('rk').textContent = k; $('rv').textContent = v; $('rs').textContent = s }
+function homeReadout() {
+  $('miniLabel').textContent = 'Brain'
+  if (!data.usage) return
+  setReadout('Tokens today', fmt(sum(data.usage.byDay[utcDay(0)])), 'UTC day, all sessions')
+}
+
+// Menu band of the cockpit dial: thinner than R1..R2 so the hud rings have room outside it.
+// Labels run along the arc on one line, cut to 12 characters; font size comes from --segfs (hud.js).
+const B0 = 236, B1 = 288
+function buildRing() {
+  const n = items.length, w = 360 / n, gap = 1.2, M = (B0 + B1) / 2
+  const band = (a0, a1) => { const [x0, y0] = pt(B0, a1), [x1, y1] = pt(B0, a0); return `${arc(B1, a0, a1)} L${x0} ${y0} A${B0} ${B0} 0 0 0 ${x1} ${y1} Z` }
+  ring.innerHTML = '<g class="seg" style="visibility:hidden"><text>H</text></g>'
+  // labels are all caps: centre the cap height optically, not the font em box (L1)
+  const cx = document.createElement('canvas').getContext('2d'), st = getComputedStyle(ring.querySelector('text'))
+  cx.font = st.font
+  const capH = cx.measureText('H').actualBoundingBoxAscent
+  ring.innerHTML = ''
+  items.forEach((it, i) => {
+    const mid = i * w, a0 = mid - w / 2 + gap, a1 = mid + w / 2 - gap
+    const g = document.createElementNS(NS, 'g')
+    g.setAttribute('class', 'seg' + (it.skill ? ' run' : ''))
+    g.setAttribute('role', 'button')
+    g.setAttribute('tabindex', i === focusIdx ? '0' : '-1')
+    g.setAttribute('aria-label', it.skill ? `Quick run ${it.full}` : `${it.label} view`)
+    // keep text upright: the lower half runs counter-clockwise with the baseline outside the middle
+    const flip = mid > 90 && mid < 270, r = flip ? M + capH / 2 : M - capH / 2
+    const [sx, sy] = pt(r, flip ? a1 : a0), [ex, ey] = pt(r, flip ? a0 : a1)
+    const label = it.label.toUpperCase().replace(/[-_:]+/g, ' ')
+    g.innerHTML = `<title>${esc(it.skill ? 'Quick run: ' + it.full : it.label)}</title>
+      <path class="shape" d="${band(a0, a1)}"/>
+      <path id="segp${i}" d="M${sx} ${sy} A${r} ${r} 0 0 ${flip ? 0 : 1} ${ex} ${ey}" fill="none"/>
+      <text><textPath href="#segp${i}" startOffset="50%" text-anchor="middle">${esc(label.length > 12 ? label.slice(0, 11).trimEnd() + '…' : label)}</textPath></text>`
+    if (it.skill) {
+      const [mx, my] = pt(flip ? B1 - 8 : B0 + 8, mid), m = document.createElementNS(NS, 'circle')
+      m.setAttribute('class', 'mark'); m.setAttribute('cx', mx); m.setAttribute('cy', my); m.setAttribute('r', 3)
+      g.appendChild(m)
+    }
+    // the gap between tiles must not snap the pointer home: wait, and cancel if the next tile is entered
+    g.addEventListener('mouseenter', () => { clearTimeout(leaveT); preview(i) })
+    g.addEventListener('mouseleave', () => { clearTimeout(leaveT); leaveT = setTimeout(() => preview(focusIdx, true), 200) })
+    g.addEventListener('focus', () => { focusIdx = i; preview(i) })
+    g.addEventListener('click', () => { moveFocus(i); activate(i) })
+    ring.appendChild(g)
+  })
+  movePointer(focusIdx)
+}
+
+function movePointer(i) {
+  const w = 360 / items.length
+  $('pointerArc').setAttribute('d', arc(229, -w / 2 + 2, w / 2 - 2))
+  // shortest rotation path so the pointer never spins the long way round
+  const cur = movePointer.a ?? 0, target = i * w
+  movePointer.a = cur + ((target - cur + 540) % 360 - 180)
+  $('pointer').style.transform = `rotate(${movePointer.a}deg)`
+}
+
+function preview(i, leaving) {
+  const it = items[i]
+  if (!it) return
+  movePointer(i)
+  if (leaving && document.activeElement?.parentNode !== ring) { ringHover = null; kick(); return homeReadout() }
+  ringHover = it.skill ? skillNode(it) : null
+  $('miniLabel').textContent = it.full
+  const r = it.readout()
+  setReadout(r[0], r[1], r[2])
+  kick()
+}
+
+function moveFocus(i) {
+  const segs = ring.querySelectorAll('.seg')
+  segs[focusIdx]?.setAttribute('tabindex', '-1')
+  focusIdx = (i + items.length) % items.length
+  segs[focusIdx].setAttribute('tabindex', '0')
+  segs[focusIdx].focus()
+}
+
+ring.addEventListener('keydown', e => {
+  const k = e.key
+  if (k === 'ArrowRight' || k === 'ArrowDown') moveFocus(focusIdx + 1)
+  else if (k === 'ArrowLeft' || k === 'ArrowUp') moveFocus(focusIdx - 1)
+  else if (k === 'Home') moveFocus(0)
+  else if (k === 'End') moveFocus(items.length - 1)
+  else if (k === 'Enter' || k === ' ') activate(focusIdx)
+  else return
+  e.preventDefault()
+})
+ring.addEventListener('focusout', e => { if (!ring.contains(e.relatedTarget)) { ringHover = null; kick(); homeReadout() } })
+
+function activate(i) {
+  const it = items[i]
+  if (mode === 'in' || mode === 'out') return
+  if (it.label === 'Brain') { if (mode === 'home') expand(); else { touched = true; fit() } return }
+  if (mode === 'brain') { collapse(it.label === 'Home' ? null : () => activate(i)); return }
+  // views open their page; only quick-run skills use the detail panel
+  if (!it.skill) return go(it.label)
+  activeIdx = i
+  ring.querySelectorAll('.seg').forEach((s, j) => s.classList.toggle('active', j === i))
+  const d = $('detail')
+  $('dKind').textContent = 'Quick run'
+  $('dSrc').textContent = it.src
+  $('dTitle').textContent = it.full
+  $('dBody').textContent = it.body
+  $('dStats').innerHTML = it.stats.map(([k, v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join('')
+  $('dControls').hidden = false
+  $('dRun').disabled = false
+  $('dStatus').textContent = `Starts claude -p /${it.full} in the background. Permission mode: ${data.skills.permissionMode}.`
+  d.hidden = false
+  drawLeaders()
+}
+function closeDetail() {
+  $('detail').hidden = true
+  ring.querySelectorAll('.seg').forEach(s => s.classList.remove('active'))
+  activeIdx = -1
+  moveFocus(focusIdx)
+  drawLeaders()
+}
+$('dClose').addEventListener('click', closeDetail)
+// RUN fires only from this explicit button press
+$('dRun').addEventListener('click', async () => {
+  const it = items[activeIdx]
+  if (!it?.skill) return
+  $('dRun').disabled = true
+  $('dStatus').textContent = 'Starting run...'
+  try {
+    const r = await fetch('/api/run', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ skill: it.id, model: $('dModel').value, effort: $('dEffort').value, mode: $('dMode').value || undefined }) }).then(r => r.json())
+    $('dStatus').textContent = r.error ? 'Error: ' + r.error : `Running. Report: ${r.report}`
+    loadRuns()
+  } catch (e) { $('dStatus').textContent = 'Server not reachable.' }
+  $('dRun').disabled = false
+})
+
+function drawLeaders() {
+  const svg = $('leaders')
+  if (getComputedStyle(svg).display === 'none' || mode !== 'home') return
+  const m = $('main').getBoundingClientRect(), d = dial.getBoundingClientRect()
+  // ends sit just outside the 5 h / 7 d gauges (r 346 of the 600 dial)
+  const cx = d.left + d.width / 2 - m.left, cy = d.top + d.height / 2 - m.top, R = d.width / 2 * 356 / 300
+  svg.setAttribute('viewBox', `0 0 ${m.width} ${m.height}`)
+  let out = ''
+  document.querySelectorAll('[data-leader]').forEach(p => {
+    const b = p.getBoundingClientRect(), s = p.closest('#left') ? -1 : 1
+    const x = (s < 0 ? b.right : b.left) - m.left, y = b.top - m.top + 20
+    const dy = Math.max(-R * .8, Math.min(R * .8, (y - cy) * .6))
+    const ex = cx + s * Math.sqrt(R * R - dy * dy), ey = cy + dy
+    // horizontal run from the card, then a 45 degree leg into the ring; never bends back past the card
+    const bx = s < 0 ? Math.max(x, ex - Math.abs(ey - y)) : Math.min(x, ex + Math.abs(ey - y))
+    out += `<path d="M${x} ${y} H${bx} L${ex} ${ey}" fill="none" stroke="#1f6f80" stroke-width="1"/>
+      <circle cx="${ex}" cy="${ey}" r="2.5" fill="#38d6f5"/><rect x="${s < 0 ? x : x - 3}" y="${y - 1.5}" width="3" height="3" fill="#38d6f5"/>`
+  })
+  svg.innerHTML = out
+}
+new ResizeObserver(drawLeaders).observe($('main'))
+new ResizeObserver(() => document.documentElement.style.setProperty('--hh', hdr.offsetHeight + 'px')).observe(hdr)
+
+// ================= graph (from B) =================
+const ORANGE = '#ff6a3d', BG = '#05080b'
+const TYPES = {
+  rule:    { one: 'Rule',          label: 'Rules',    color: '#eafaff', r: 5, sides: 0 },
+  skill:   { one: 'Skill',         label: 'Skills',   color: '#ff8a3d', r: 5, sides: 3 },
+  memory:  { one: 'Memory',        label: 'Memory',   color: '#38d6f5', r: 5, sides: 4 },
+  project: { one: 'Project state', label: 'Projects', color: '#ff4f5e', r: 5, sides: 6, ring: true },
+  design:  { one: 'Design',        label: 'Design',   color: '#ffd23d', r: 5, sides: 5 },
+}
+// polygon points from the top; triangles get 1.3x so they read as large as the rest
+function shapePts(sides, x, y, r) {
+  const R = sides === 3 ? r * 1.3 : r
+  return Array.from({ length: sides }, (_, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / sides; return [x + R * Math.cos(a), y + R * Math.sin(a)] })
+}
+function shapePath(c, sides, x, y, r) {
+  c.beginPath()
+  if (!sides) return c.arc(x, y, r, 0, 7)
+  shapePts(sides, x, y, r).forEach(([px, py], i) => i ? c.lineTo(px, py) : c.moveTo(px, py)); c.closePath()
+}
+function shapeSvg(t, off) {
+  const T = TYPES[t], fill = T.ring || off ? 'none' : T.color, stroke = off ? 'var(--muted)' : T.color
+  const el = T.sides ? `<polygon points="${shapePts(T.sides, 6, 6.6, 4.6).map(p => p.map(v => v.toFixed(2)).join(',')).join(' ')}"` : '<circle cx="6" cy="6" r="4.6"'
+  return `<svg class="sw" viewBox="0 0 12 12" aria-hidden="true">${el} fill="${fill}" stroke="${stroke}" stroke-width="1.5" stroke-linejoin="round"/></svg>`
+}
+const ORDER = Object.keys(TYPES)
+const on = Object.fromEntries(ORDER.map(t => [t, true]))
+let folder = '' // top folder filter, '' = all (set in brain.js)
+// layout and local graph live in brain.js: frozen = nodes sit in a static layout (no forces),
+// lay = position tween {t0, dur, e, done}, localSet = nodes near the selection (local graph)
+let layout = 'force', frozen = false, lay = null, localSet = null
+const shown = n => !n.unborn && on[n.type] &&(!folder || n.folder === folder || folder === 'fam:' + n.fam) && (!localSet || !sel || localSet.has(n))
+let N = [], E = [], adj = new Map(), graphOk = false
+let W = 0, H = 0, dpr = 1
+const cam = { x: 0, y: 0, k: 1 }
+let alpha = 1, alphaTarget = 0
+let hover = null, famHover = null, sel = null, query = '', matches = [], matchIdx = -1
+let tween = null, anim = null, touched = false, fitted = false, raf = 0, lastT = 0
+let pulses = [], fdt = 16, fitK = 0, wheelHold = 0, pendingGo = null
+const ZOUT = 0.55 // zooming out below this share of the fit zoom returns to the Home reactor
+
+const RGB = {}
+const rgba = (c, a) => `rgba(${RGB[c] || (RGB[c] = [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)).join(','))},${a})`
+// the type colour pushed halfway to white: the hot centre of a node
+const hots = {}
+const hot = c => hots[c] || (hots[c] = '#' + [1, 3, 5].map(i => Math.round((parseInt(c.slice(i, i + 2), 16) + 255) / 2).toString(16).padStart(2, '0')).join(''))
+// pre-rendered glow per colour, drawn with 'lighter' (a radial gradient scales without shimmer)
+const glows = {}
+function glow(c) {
+  if (glows[c]) return glows[c]
+  const s = document.createElement('canvas'); s.width = s.height = 128
+  const g = s.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64)
+  for (const [o, a] of [[0, 1], [0.07, 0.7], [0.18, 0.3], [0.38, 0.09], [0.65, 0.025], [1, 0]]) gr.addColorStop(o, rgba(c, a))
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128)
+  return glows[c] = s
+}
+// full map backdrop: faint cyan and warm nebulae, a dot grid and a vignette, rebuilt only on resize
+let bgC = null
+function backdrop() {
+  const w = Math.round(W * dpr), h = Math.round(H * dpr)
+  if (bgC && bgC.width === w && bgC.height === h) return bgC
+  bgC = bgC || document.createElement('canvas'); bgC.width = w; bgC.height = h
+  const g = bgC.getContext('2d'), m = Math.max(W, H)
+  g.setTransform(dpr, 0, 0, dpr, 0, 0)
+  g.fillStyle = BG; g.fillRect(0, 0, W, H)
+  for (const [x, y, r, c, a] of [[W * 0.5, H * 0.52, m * 0.55, '#38d6f5', 0.075], [W * 0.8, H * 0.85, m * 0.42, '#ff6a3d', 0.04], [W * 0.16, H * 0.2, m * 0.36, '#ff4f5e', 0.025]]) {
+    const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, rgba(c, a)); gr.addColorStop(1, rgba(c, 0))
+    g.fillStyle = gr; g.fillRect(0, 0, W, H)
+  }
+  g.fillStyle = 'rgba(56,214,245,.07)'
+  for (let x = 16; x < W; x += 32) for (let y = 16; y < H; y += 32) g.fillRect(x, y, 1, 1)
+  const v = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, m * 0.75)
+  v.addColorStop(0, 'rgba(2,4,6,0)'); v.addColorStop(1, 'rgba(2,4,6,.8)')
+  g.fillStyle = v; g.fillRect(0, 0, W, H)
+  return bgC
+}
+
+// a quick-run skill maps to its SKILL.md node; plugin skills are not in the file map
+function skillNode(it) {
+  const plugin = it.id.includes(':') ? it.id.split(':')[0].toLowerCase() : null
+  return N.find(n => n.type === 'skill' && n.label === it.label && (!plugin || n.id.toLowerCase().includes(plugin))) || null
+}
+
+fetch('/api/graph').then(r => { if (!r.ok) throw new Error(r.status); return r.json() }).then(g => { window.GRAPH_TRIM = g.trim; init(g) })
+  .catch(() => { $('msg').textContent = 'Server not reachable. Start it with node server.js, then reload.' })
+
+// prev: old nodes by id (index refresh), so known files keep their place
+function init(g, prev) {
+  const byId = new Map()
+  adj = new Map()
+  N = g.nodes.map((n, i) => {
+    const a = i * Math.PI * (3 - Math.sqrt(5)), r = 10 * Math.sqrt(0.5 + i), o = prev && prev.get(n.id)
+    const d = new Date(n.mtime)
+    // search by date: local "2026-10-31 oct october"
+    const when = `${d.toLocaleDateString('sv')} ${d.toLocaleDateString('en-US', { month: 'short' })} ${d.toLocaleDateString('en-US', { month: 'long' })}`.toLowerCase()
+    // in a static layout the old force place is hx, hy
+    const node = { ...n, fam: (g.families && g.families[n.folder]) || n.folder, when, x: o ? (frozen ? o.hx : o.x) : r * Math.cos(a), y: o ? (frozen ? o.hy : o.y) : r * Math.sin(a), vx: 0, vy: 0, fx: null, fy: null, deg: 0, ph: o ? o.ph : Math.random() * 6.28 }
+    byId.set(n.id, node); adj.set(node, [])
+    return node
+  })
+  E = g.edges.map(e => ({ s: byId.get(e.source), t: byId.get(e.target), kind: e.kind })).filter(e => e.s && e.t)
+  for (const e of E) { e.s.deg++; e.t.deg++; adj.get(e.s).push({ node: e.t, kind: e.kind }); adj.get(e.t).push({ node: e.s, kind: e.kind }) }
+  for (const e of E) { e.str = 1 / Math.min(e.s.deg, e.t.deg); e.bias = e.s.deg / (e.s.deg + e.t.deg) }
+  for (const n of N) n.r = TYPES[n.type].r
+  N.sort((a, b) => ORDER.indexOf(b.type) - ORDER.indexOf(a.type))
+  frozen = false; lay = null; localSet = null
+  if (!N.length) { $('msg').textContent = 'No files found under ~/.claude.'; return }
+  graphOk = true
+  $('msg').hidden = true
+  buildChips(); stats(); window.brain && brain.ready(); updateSearch()
+  $('rail').hidden = false
+  // reduced motion: settle the layout once, then draw still frames only
+  if (reduce) for (let i = 0; i < 600 && alpha >= 0.001; i++) tick()
+  kick()
+}
+
+function buildChips() {
+  const counts = {}
+  for (const n of N) counts[n.type] = (counts[n.type] || 0) + 1
+  $('chips').replaceChildren(...ORDER.filter(t => counts[t]).map(t => {
+    const b = document.createElement('button')
+    b.className = 'chip'; b.setAttribute('aria-pressed', on[t])
+    b.innerHTML = `${shapeSvg(t)}${TYPES[t].label} <b>${counts[t]}</b>`
+    b.onclick = () => {
+      on[t] = !on[t]; b.setAttribute('aria-pressed', on[t]); b.querySelector('.sw').outerHTML = shapeSvg(t, !on[t])
+      if (sel && !shown(sel)) select(null)
+      updateSearch(); window.brain && brain.refilter(); kick()
+    }
+    return b
+  }))
+}
+
+function stats() {
+  $('sNodes').textContent = N.length
+  $('sEdges').textContent = E.length
+  $('sOrph').textContent = N.filter(n => !n.deg).length
+  const newest = N.reduce((a, b) => (b.mtime > a.mtime ? b : a))
+  $('sNew').textContent = newest.label
+  $('sNew').title = newest.label
+  $('sNewAgo').textContent = ago(newest.mtime)
+  $('sNew').onclick = () => select(newest, true)
+}
+
+// d3-style forces, O(n^2) repulsion is fine under 400 nodes
+function tick() {
+  alpha += (alphaTarget - alpha) * 0.0228
+  const n = N.length
+  for (let i = 0; i < n; i++) {
+    const a = N[i]
+    for (let j = i + 1; j < n; j++) {
+      const b = N[j]
+      let dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy
+      if (d2 > 360000) continue
+      if (d2 < 1) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d2 = 1 }
+      const s = 140 * alpha / d2
+      a.vx -= dx * s; a.vy -= dy * s; b.vx += dx * s; b.vy += dy * s
+    }
+  }
+  for (const e of E) {
+    const s = e.s, t = e.t
+    let dx = t.x + t.vx - s.x - s.vx, dy = t.y + t.vy - s.y - s.vy
+    let l = Math.hypot(dx, dy) || 1
+    l = (l - 46) / l * alpha * e.str
+    dx *= l; dy *= l
+    t.vx -= dx * e.bias; t.vy -= dy * e.bias
+    s.vx += dx * (1 - e.bias); s.vy += dy * (1 - e.bias)
+  }
+  // gravity 0.1 (was 0.06) keeps orphans from spreading the layout
+  for (const p of N) {
+    p.vx -= p.x * 0.1 * alpha; p.vy -= p.y * 0.1 * alpha
+    if (p.fx !== null) { p.x = p.fx; p.y = p.fy; p.vx = p.vy = 0; continue }
+    p.vx *= 0.6; p.vy *= 0.6; p.x += p.vx; p.y += p.vy
+  }
+}
+
+// rAF stalls in a throttled or background page; the timeout keeps time-based animations finishing
+let rafTO = 0
+function kick() {
+  if (raf) return
+  raf = requestAnimationFrame(frame)
+  // only timed moves need it; ambient loops must not run on in a hidden tab
+  if (anim || tween || lay) { clearTimeout(rafTO); rafTO = setTimeout(() => { if (raf) { cancelAnimationFrame(raf); frame(performance.now()) } }, 120) }
+}
+function frame(t) {
+  raf = 0
+  const dt = fdt = Math.min(64, t - (lastT || t)); lastT = t
+  const simming = !reduce && !frozen && graphOk && (alpha >= 0.001 || alphaTarget > 0)
+  if (simming) {
+    tick()
+    if (mode === 'brain' && !fitted && !touched && alpha < 0.08) { fitted = true; fit() }
+  }
+  if (lay) stepLay(t)
+  if (window.brain) brain.spin(dt)
+  if (anim) stepAnim(t)
+  else if (tween) stepTween(t)
+  if (mode === 'home') homeCam()
+  const homeLive = mode === 'home' && W > 0 && page === 'Home'
+  if ((homeLive || mode === 'brain') && !reduce) stepPulses(dt)
+  draw(t)
+  if (simming || lay || tween || anim || (mode === 'brain' && !reduce) || (homeLive && !reduce && graphOk)) kick()
+  else lastT = 0
+}
+
+// ---------- camera ----------
+function bounds() {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+  const vis = N.filter(n => shown(n))
+  for (const n of vis) { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x); y1 = Math.max(y1, n.y) }
+  const gx = (x0 + x1) / 2, gy = (y0 + y1) / 2
+  let rad = 0
+  const ds = vis.map(n => Math.hypot(n.x - gx, n.y - gy)).sort((a, b) => a - b)
+  rad = ds.length ? Math.max(...ds) : 0
+  const rad90 = ds.length ? ds[Math.floor(ds.length * 0.88)] : 0
+  const sr = window.brain && brain.sphereR() // the sphere: a fixed centre and size, so the fit does not breathe as it turns
+  if (sr) return { vis, x0, y0, x1, y1, gx: 0, gy: 0, rad: sr * 1.1, rad90: sr * 1.05 }
+  return { vis, x0, y0, x1, y1, gx, gy, rad, rad90 }
+}
+// home: the camera always fits the graph inside the core circle
+const homeK = (R, b) => R * 0.9 / (b.rad90 + 10)  // outliers may fall under the rim fade
+function homeCam() {
+  if (!graphOk || !W) return // a hidden dial has a 0 px canvas: k would be 0 and the next zoom NaN
+  const b = bounds(), R = W / 2
+  if (!b.vis.length) return
+  cam.k = homeK(R, b); cam.x = W / 2 - b.gx * cam.k; cam.y = H / 2 - b.gy * cam.k + (window.brain && brain.sphereR() ? H * 0.06 : 0) // sphere sits a little low, clear of the readout title
+}
+function area() {
+  const a = { l: 0, t: hdr.offsetHeight, r: W, b: H }
+  if (W <= 700 && !$('rail').hidden) a.t = $('rail').offsetTop + $('rail').offsetHeight
+  if (!card.hidden) {
+    if (card.offsetWidth < W * 0.6) a.r = card.offsetLeft - 8
+    else a.b = card.offsetTop - 8
+  }
+  return a
+}
+function fitTarget() {
+  const b = bounds(), a = area()
+  if (!b.vis.length) return { w: [0, 0], k: 1 }
+  const rk = window.brain && brain.ringsK(a)
+  if (rk) return { w: [0, 0], k: rk }
+  const k = clamp(Math.min((a.r - a.l) / (b.x1 - b.x0 + 120), (a.b - a.t) / (b.y1 - b.y0 + 120)), 0.2, 2.5)
+  return { w: [b.gx, b.gy], k }
+}
+const areaCentre = () => { const a = area(); return [(a.l + a.r) / 2, (a.t + a.b) / 2] }
+function goTo(wx, wy, k, jump) {
+  const [cx, cy] = areaCentre()
+  if (reduce || jump) { cam.k = k; cam.x = cx - wx * k; cam.y = cy - wy * k; tween = null; kick(); return }
+  tween = { w0: [(cx - cam.x) / cam.k, (cy - cam.y) / cam.k], w1: [wx, wy], k0: cam.k, k1: k, cx, cy, t0: performance.now(), dur: 650 }
+  kick()
+}
+const easeOut = p => 1 - Math.pow(1 - p, 3)
+const ease = p => p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2
+function stepTween(t) {
+  if (!(tween.k0 > 0)) tween.k0 = tween.k1
+  const p = clamp((t - tween.t0) / tween.dur, 0, 1), e = ease(p)
+  const k = tween.k0 * Math.pow(tween.k1 / tween.k0, e)
+  const wx = lerp(tween.w0[0], tween.w1[0], e), wy = lerp(tween.w0[1], tween.w1[1], e)
+  cam.k = k; cam.x = tween.cx - wx * k; cam.y = tween.cy - wy * k
+  if (p >= 1) tween = null
+}
+// layout change: every node moves from (ox, oy) to (tx, ty) on one clock
+// pop: each node starts later the farther out it lands (n.dl) and overshoots a little
+const backOut = q => 1 + 2.2 * Math.pow(q - 1, 3) + 1.2 * Math.pow(q - 1, 2)
+function stepLay(t) {
+  const p = clamp((t - lay.t0) / lay.dur, 0, 1), e = lay.e = ease(p)
+  for (const n of N) {
+    const f = lay.pop ? backOut(clamp((p - n.dl) / (1 - n.dl), 0, 1)) : e
+    n.x = n.ox + (n.tx - n.ox) * f; n.y = n.oy + (n.ty - n.oy) * f
+    if (lay.pop) { const g = Math.min(f, 1); n.zs = n.zs0 + (1 - n.zs0) * g; n.za = n.za0 + (1 - n.za0) * g }
+  }
+  if (p >= 1) { const l = lay; lay = null; l.done && l.done() }
+}
+function fit(jump) { const f = fitTarget(); goTo(f.w[0], f.w[1], f.k, jump) }
+// the floor sits below the return threshold, so a large graph can still zoom out to Home
+function zoomAt(x, y, f) {
+  fitK = fitTarget().k
+  const k = clamp(cam.k * f, Math.min(0.15, fitK * ZOUT * 0.8), 6)
+  cam.x = x - (x - cam.x) * k / cam.k; cam.y = y - (y - cam.y) * k / cam.k; cam.k = k
+  tween = null; touched = true; kick()
+  zoomedOut()
+}
+// zoomed out far past the fit: hand the gesture to the collapse, which starts from this camera
+function zoomedOut() {
+  if (mode === 'brain' && !lay && !(drag && drag.node) && fitK && cam.k < fitK * ZOUT) collapse()
+}
+const toScreen = n => [n.x * cam.k + cam.x, n.y * cam.k + cam.y]
+const radius = n => clamp(n.r * cam.k, 1.6, 16) * (n.zs || 1) // zs: sphere perspective
+
+// ---------- expand / collapse: the core opens to full screen, the dial docks in the corner ----------
+function flip(el, change) {
+  const a = el.getBoundingClientRect()
+  change()
+  const b = el.getBoundingClientRect()
+  if (reduce || !b.width || !a.width) return b
+  // individual translate/scale about the centre: they leave the stylesheet transform alone, so the
+  // 3D view's tilt (re-set each frame by depth.js) neither overrides nor restarts this transition
+  el.style.transition = 'none'
+  el.style.translate = `${a.left + a.width / 2 - b.left - b.width / 2}px ${a.top + a.height / 2 - b.top - b.height / 2}px`
+  const s = a.width / b.width
+  el.style.scale = `${s} ${s} ${s}` // z too: the 3D view's deep layers would otherwise keep full depth and drift to the vanishing point
+  el.getBoundingClientRect()
+  el.style.transition = 'translate 700ms var(--ease), scale 700ms var(--ease)'; el.style.translate = el.style.scale = ''
+  // a stalled transition (throttled page) snaps to its end state when the property is removed
+  setTimeout(() => { el.style.transition = ''; el.getAnimations().forEach(t => t instanceof CSSTransition && t.finish()) }, 760)
+  return b
+}
+function setInert(v) {
+  for (const id of ['left', 'right', 'detail', 'hint', 'homeMore']) $(id).inert = v
+  $('stageUI').inert = !v
+}
+const farCorner = (x, y) => Math.max(Math.hypot(x, y), Math.hypot(W - x, y), Math.hypot(x, H - y), Math.hypot(W - x, H - y))
+
+let diving = false
+function expand() {
+  if (mode !== 'home' || diving) return
+  // 3D view: a short dive first (the HUD flattens toward the viewer, the side panels fade), then the core opens
+  if (document.documentElement.dataset.view === 'depth' && innerWidth > 960 && !reduce && page === 'Home') {
+    diving = true; document.body.classList.add('dive')
+    setTimeout(() => { diving = false; openCore() }, 300)
+    return
+  }
+  openCore()
+}
+function openCore() {
+  if (mode !== 'home') { document.body.classList.remove('dive'); return }
+  // from another page the dial was hidden: size the core and aim its camera before reading it
+  if (cv.clientWidth !== W || cv.clientHeight !== H) resize()
+  homeCam(); fitK = 0
+  const r = cv.getBoundingClientRect(), s0 = [r.left + r.width / 2, r.top + r.height / 2]
+  const w0 = [(W / 2 - cam.x) / cam.k, (H / 2 - cam.y) / cam.k], k0 = cam.k
+  const inDial = dial.contains(document.activeElement)
+  mode = 'in'; hover = null; tween = null; fitted = !!sel // no sel: refit once the sim settles (fresh /#Brain loads before layout ends)
+  const dived = document.body.classList.contains('dive')
+  document.body.classList.add('brain'); document.body.classList.remove('dive')
+  $('back').hidden = false; $('crumb').hidden = false
+  setNav('Brain')
+  setInert(true)
+  flip(dial, () => dial.classList.add('mini'))
+  document.body.append(cv); cv.className = 'full'; resize()
+  // the stored layout applies on the full map only; the portal zoom is its motion
+  window.brain && brain.arrive()
+  // target: the selected node (search Enter, Newest) or the whole graph
+  let s1 = areaCentre(), w1, k1
+  if (sel) { w1 = [sel.x, sel.y]; k1 = Math.max(fitTarget().k, 1.6) } else { const f = fitTarget(); w1 = f.w; k1 = f.k }
+  anim = { ez: dived ? easeOut : null, t0: performance.now(), dur: reduce ? 0 : 750, c0: s0, c1: s0, r0: r.width / 2, r1: farCorner(...s0) + 4, s0, s1, w0, w1, k0, k1, done: () => {
+    mode = 'brain'; cv.classList.add('live')
+  } }
+  if (inDial && document.activeElement.matches(":focus-visible") && getComputedStyle(dial).display === "none") $("back").focus()
+  kick()
+}
+
+function collapse(after) {
+  if (mode !== 'brain') return
+  const focusLost = !document.activeElement || document.activeElement === document.body || $('stageUI').contains(document.activeElement) || document.activeElement === $('back') || document.activeElement === cv || document.activeElement === q
+  const s0 = areaCentre(), w0 = [(s0[0] - cam.x) / cam.k, (s0[1] - cam.y) / cam.k], k0 = cam.k
+  mode = 'out'; hover = null; tween = null
+  sel = null; card.hidden = true
+  cv.classList.remove('live')
+  $('back').hidden = true; $('crumb').hidden = true
+  setInert(false)
+  // drop .brain inside the flip: the 3D view's perspective would trap the fixed mini dial before it is measured
+  const d = flip(dial, () => { document.body.classList.remove('brain'); dial.classList.remove('mini') })
+  const c1 = [d.left + d.width / 2, d.top + d.height / 2], R = d.width / 2 * CORE / 300
+  window.brain && brain.leave(true) // Home shows the force layout (the sphere in the 3D view)
+  const b = bounds()
+  anim = { t0: performance.now(), dur: reduce ? 0 : 650, c0: c1, c1, r0: farCorner(...c1) + 4, r1: R, s0, s1: c1, w0, w1: [b.gx, b.gy], k0, k1: b.vis.length ? homeK(R, b) : k0, done: () => {
+    dial.insertBefore(cv, $('coreBtn')); cv.className = 'core'; resize()
+    mode = 'home'; wheelHold = performance.now() + 400 // trackpad inertia must not scroll Home
+    setNav('Home')
+    drawLeaders()
+    if (focusLost) { const bi = items.findIndex(x => x.label === 'Brain'); if (bi >= 0) moveFocus(bi) }
+    if (after) after()
+  } }
+  kick()
+}
+// tab switch from the map: the target page shows at once under the canvas, and the map
+// recedes (zoom out) inside an iris that closes on the view centre; no stop at the dial
+function leave() {
+  const [cx, cy] = areaCentre(), k0 = cam.k, w = [(cx - cam.x) / k0, (cy - cam.y) / k0]
+  mode = 'out'; hover = null; tween = null
+  sel = null; card.hidden = true
+  cv.classList.remove('live')
+  document.body.classList.remove('brain')
+  $('back').hidden = true; $('crumb').hidden = true
+  setInert(false)
+  dial.classList.remove('mini')
+  anim = { t0: performance.now(), dur: reduce ? 0 : 560, c0: [cx, cy], c1: [cx, cy], r0: farCorner(cx, cy) + 4, r1: 3, s0: [cx, cy], s1: [cx, cy], w0: w, w1: w, k0, k1: k0 * 0.35, done: () => {
+    window.brain && brain.leave()
+    dial.insertBefore(cv, $('coreBtn')); cv.className = 'core'
+    mode = 'home'; wheelHold = performance.now() + 400
+    resize()
+  } }
+  if (reduce) stepAnim(performance.now())
+  else kick()
+}
+function stepAnim(t) {
+  if (!(anim.k0 > 0)) anim.k0 = anim.k1
+  const p = anim.dur ? clamp((t - anim.t0) / anim.dur, 0, 1) : 1, e = (anim.ez || ease)(p)
+  const k = anim.k0 * Math.pow(anim.k1 / anim.k0, e)
+  const sx = lerp(anim.s0[0], anim.s1[0], e), sy = lerp(anim.s0[1], anim.s1[1], e)
+  cam.k = k; cam.x = sx - lerp(anim.w0[0], anim.w1[0], e) * k; cam.y = sy - lerp(anim.w0[1], anim.w1[1], e) * k
+  anim.clip = [lerp(anim.c0[0], anim.c1[0], e), lerp(anim.c0[1], anim.c1[1], e), anim.r0 * Math.pow(anim.r1 / anim.r0, e)]
+  anim.e = e
+  if (p >= 1) {
+    const a = anim; anim = null; a.done()
+    // a page asked for while the map moved: go there now
+    if (pendingGo) { const n = pendingGo; pendingGo = null; go(n) }
+  }
+}
+$('back').onclick = () => collapse()
+$('coreBtn').onclick = () => expand()
+
+// ---------- living core: signal pulses run along random links ----------
+// on the map more pulses run, most of them on the links of the selected or hovered file
+function stepPulses(dt) {
+  const vis = E.filter(e => shown(e.s) && shown(e.t))
+  if (!vis.length) { pulses = []; return }
+  const f = mode === 'brain' && (sel || hover), fe = f ? vis.filter(e => e.s === f || e.t === f) : []
+  const pick = () => fe.length && Math.random() < 0.6 ? fe[Math.random() * fe.length | 0] : vis[Math.random() * vis.length | 0]
+  const want = mode === 'home' ? 9 : Math.min(40, 10 + (vis.length / 8 | 0)), v = mode === 'home' ? 1 : 1.8
+  if (pulses.length > want) pulses.length = want
+  while (pulses.length < want) pulses.push({ e: pick(), p: Math.random(), v: (0.00025 + Math.random() * 0.0003) * v })
+  for (const p of pulses) {
+    p.p += p.v * dt
+    if (p.p >= 1 || !shown(p.e.s) || !shown(p.e.t)) { p.e = pick(); p.p = 0 }
+  }
+}
+
+// ---------- drawing ----------
+function draw(t) {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  ctx.clearRect(0, 0, W, H)
+  if (!graphOk) return
+  const home = mode === 'home', full = mode === 'brain'
+  const clip = home ? [W / 2, H / 2, W / 2] : anim?.clip
+  ctx.save()
+  if (clip) { ctx.beginPath(); ctx.arc(clip[0], clip[1], clip[2], 0, 7); ctx.clip() }
+  if (home) { ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H) } else ctx.drawImage(backdrop(), 0, 0, W, H)
+  const focusNode = sel || hover || ringHover
+  const focus = focusNode ? new Set([focusNode, ...adj.get(focusNode).map(x => x.node)]) : famHover ? new Set(N.filter(n => n.fam === famHover)) : query ? new Set(matches) : null
+  const k = cam.k, globe = window.brain && brain.sphereR()
+  const path = (p, e) => globe ? brain.edgePath(p, e) : (p.moveTo(e.s.x, e.s.y), p.lineTo(e.t.x, e.t.y))
+
+  ctx.save(); ctx.translate(cam.x, cam.y); ctx.scale(k, k)
+  if (!home) {
+    // HUD rings around the graph centre, sized to the graph
+    let R = 0
+    for (const n of N) if (shown(n)) R = Math.max(R, Math.hypot(n.x, n.y))
+    ctx.lineWidth = 1 / k; ctx.strokeStyle = '#123540'
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.45, 0, 7); ctx.stroke()
+    // the dashed ring turns slowly
+    ctx.setLineDash([4 / k, 8 / k]); ctx.lineDashOffset = reduce ? 0 : -t / 90 / k
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.78, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0
+    const Ro = R * 1.1 + 20 / k
+    ctx.beginPath(); ctx.arc(0, 0, Ro, 0, 7); ctx.stroke()
+    ctx.strokeStyle = '#163a46'; ctx.beginPath()
+    for (let i = 0; i < 72; i++) {
+      const a = i * Math.PI / 36, l = (i % 6 ? 6 : 14) / k
+      ctx.moveTo(Math.cos(a) * Ro, Math.sin(a) * Ro); ctx.lineTo(Math.cos(a) * (Ro + l), Math.sin(a) * (Ro + l))
+    }
+    ctx.moveTo(-10 / k, 0); ctx.lineTo(10 / k, 0); ctx.moveTo(0, -10 / k); ctx.lineTo(0, 10 / k)
+    ctx.stroke()
+    if (full && frozen && window.brain) brain.drawMarks(ctx, k)
+  } else if (frozen && window.brain) brain.drawMarks(ctx, k) // the home sphere
+  // edges: light lines that blend from one end's type colour to the other's, a soft wide pass
+  // under a thin core, added with 'lighter'; dimmed edges stay one flat batch
+  const dim = new Path2D(), base = [], hi = []
+  for (const e of E) {
+    if (!shown(e.s) || !shown(e.t)) continue
+    if (focusNode && (e.s === focusNode || e.t === focusNode)) hi.push(e)
+    else if (focus && !(focus.has(e.s) && focus.has(e.t))) path(dim, e)
+    else base.push(e)
+  }
+  ctx.globalCompositeOperation = 'lighter'
+  ctx.lineWidth = 1 / k; ctx.strokeStyle = 'rgba(56,214,245,.05)'; ctx.stroke(dim)
+  const soft = home ? 2.5 : 4
+  const edge = (e, a, w, solid) => {
+    let g = solid
+    if (!g) { g = ctx.createLinearGradient(e.s.x, e.s.y, e.t.x, e.t.y); g.addColorStop(0, TYPES[e.s.type].color); g.addColorStop(1, TYPES[e.t.type].color) }
+    ctx.strokeStyle = g; ctx.beginPath(); path(ctx, e)
+    ctx.globalAlpha = a * 0.13; ctx.lineWidth = soft * w / k; ctx.stroke()
+    ctx.globalAlpha = a * 0.5; ctx.lineWidth = w / k; ctx.stroke()
+  }
+  const ba = focus ? 0.75 : home ? 0.6 : 0.55, ez = e => ((e.s.za || 1) + (e.t.za || 1)) / 2 // za: sphere depth
+  for (const e of base) edge(e, ba * ez(e) * (globe && !focus && e.s.fam !== e.t.fam ? 0.35 : 1), 1) // links between globe families stay dim
+  for (const e of hi) edge(e, 1.6 * ez(e), 1.6, sel ? ORANGE : null)
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'
+  ctx.restore()
+
+  // nodes, pass 1 ('lighter'): halo per type colour, bigger when hovered (bloom) or selected;
+  // z (fixed per node) varies the halo, far-from-centre nodes dim, halos twinkle
+  const list = [], reach = Math.hypot(W, H) / 2
+  ctx.globalCompositeOperation = 'lighter'
+  for (const n of N) {
+    if (!shown(n)) continue
+    const [x, y] = toScreen(n), r = radius(n)
+    if (x < -60 || y < -60 || x > W + 60 || y > H + 60) continue
+    const dimmed = focus && !focus.has(n), want = n === hover || n === ringHover ? 1 : 0
+    n.hb = reduce ? want : (n.hb || 0) + (want - (n.hb || 0)) * Math.min(1, fdt * 0.012)
+    let a = (dimmed ? 0.22 : 1) * (n.za || 1)
+    if (!home && !dimmed) a *= 1 - 0.5 * clamp((Math.hypot(x - W / 2, y - H / 2) / reach - 0.45) / 0.55, 0, 1)
+    list.push([n, x, y, r, a, dimmed])
+    if (dimmed) continue
+    const c = n === sel ? ORANGE : TYPES[n.type].color, z = n.ph / 6.2832
+    const tw = reduce ? 1 : 0.78 + 0.22 * Math.sin(t / 650 + n.ph * 3)
+    const D = r * (10 + 6 * z)
+    ctx.globalAlpha = a * (home ? 0.5 : 0.62 + 0.3 * z) * tw
+    ctx.drawImage(glow(c), x - D / 2, y - D / 2, D, D)
+    const b = n === sel ? 1 : n.hb
+    if (b > 0.01) { const B = r * 20 * (0.6 + 0.4 * b); ctx.globalAlpha = 0.45 * b; ctx.drawImage(glow(c), x - B / 2, y - B / 2, B, B) }
+  }
+  // pass 2: the crisp shape, a lit outline and a hot inner core (the project hexagon stays hollow)
+  ctx.globalCompositeOperation = 'source-over'
+  if (window.brain && brain.sphereR()) list.sort((p, q) => p[0].zs - q[0].zs) // back to front
+  for (const [n, x, y, r0, a, dimmed] of list) {
+    const T = TYPES[n.type], c = n === sel ? ORANGE : T.color, r = r0 * (1 + 0.22 * (n.hb || 0))
+    ctx.globalAlpha = home && !reduce && !dimmed ? a * (0.72 + 0.28 * Math.sin(t / 900 + n.ph)) : a
+    shapePath(ctx, T.sides, x, y, r)
+    if (T.ring && n !== sel) {
+      ctx.fillStyle = rgba(c, 0.14); ctx.fill(); ctx.lineWidth = home ? 1 : 1.8; ctx.strokeStyle = c; ctx.stroke()
+      if (r > 3.5 && !dimmed) { shapePath(ctx, 6, x, y, r * 0.5); ctx.lineWidth = 0.8; ctx.strokeStyle = rgba(c, 0.55); ctx.stroke() }
+    } else {
+      ctx.fillStyle = c; ctx.fill()
+      if (r > 2.5 && !dimmed) {
+        ctx.lineWidth = 1; ctx.strokeStyle = hot(c); ctx.stroke()
+        shapePath(ctx, T.sides, x, T.sides === 3 ? y + r * 0.12 : y, r * 0.42); ctx.fillStyle = '#ffffff'; ctx.globalAlpha *= 0.85; ctx.fill()
+      }
+    }
+    if (query && matches.includes(n) && n !== sel) { ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(x, y, r + (home ? 3 : 5), 0, 7); ctx.lineWidth = 1.5; ctx.strokeStyle = '#38d6f5'; ctx.stroke() }
+  }
+  ctx.globalAlpha = 1
+
+  // pulses: a bright head with a fading tail, in the colour of the file they travel to
+  if (!reduce && (home || full)) {
+    ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'
+    for (const p of pulses) {
+      const e = p.e
+      if (!shown(e.s) || !shown(e.t)) continue
+      const c = sel && (e.s === sel || e.t === sel) ? ORANGE : hot(TYPES[e.t.type].color), q0 = Math.max(0, p.p - 0.22)
+      const at = q => globe ? brain.edgeAt(e, q) : [lerp(e.s.x, e.t.x, q), lerp(e.s.y, e.t.y, q)], [wx, wy] = at(p.p), [wx0, wy0] = at(q0)
+      const x = wx * k + cam.x, y = wy * k + cam.y, x0 = wx0 * k + cam.x, y0 = wy0 * k + cam.y
+      const a = Math.sin(p.p * Math.PI), s = home ? 12 : 18
+      ctx.globalAlpha = a
+      const g = ctx.createLinearGradient(x0, y0, x, y); g.addColorStop(0, rgba(c, 0)); g.addColorStop(1, rgba(c, 0.9))
+      ctx.strokeStyle = g; ctx.lineWidth = home ? 1.2 : 2; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x, y); ctx.stroke()
+      ctx.drawImage(glow(c), x - s / 2, y - s / 2, s, s)
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, home ? 1.1 : 1.5, 0, 7); ctx.fill()
+    }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.lineCap = 'butt'
+  }
+  // skill hovered on the dial: mark it like a hover
+  const ring2 = ringHover && shown(ringHover) ? ringHover : null
+  if (sel && shown(sel) && !home) {
+    const [x, y] = toScreen(sel), r = radius(sel) + 9, rot = reduce ? 0 : t / 2400
+    ctx.lineWidth = 2; ctx.strokeStyle = ORANGE
+    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(x, y, r, rot + i * Math.PI / 2, rot + i * Math.PI / 2 + 1.1); ctx.stroke() }
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,106,61,.45)'; ctx.beginPath(); ctx.arc(x, y, r + 6, 0, 7); ctx.stroke()
+  }
+  for (const h of [hover, ring2]) if (h && h !== sel) {
+    const [x, y] = toScreen(h)
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#38d6f5'; ctx.beginPath(); ctx.arc(x, y, radius(h) + (home ? 4 : 6), 0, 7); ctx.stroke()
+  }
+
+  if (home) {
+    // dark plate behind the readout, and a soft fade at the core rim
+    const R = W / 2
+    let g = ctx.createLinearGradient(0, H * 0.5, 0, H * 0.82)
+    g.addColorStop(0, "rgba(5,8,11,0)"); g.addColorStop(1, "rgba(5,8,11,.85)")
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    g = ctx.createRadialGradient(R, R, R * 0.8, R, R, R)
+    g.addColorStop(0, 'rgba(5,8,11,0)'); g.addColorStop(1, 'rgba(5,8,11,.9)')
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
+    if (globe) brain.drawNames(ctx)
+  } else if (full) {
+    if (frozen && window.brain) brain.drawNames(ctx)
+    drawLabels(focus)
+    // past the fit: a ring closes in and says where the gesture leads
+    if (fitK && k < fitK * 0.92 && !lay) {
+      const p = clamp((fitK * 0.92 - k) / (fitK * (0.92 - ZOUT)), 0, 1), [cx, cy] = areaCentre(), rr = lerp(Math.min(W, H) * 0.46, 120, p)
+      ctx.globalAlpha = p; ctx.lineWidth = 1.5; ctx.strokeStyle = '#38d6f5'; ctx.setLineDash([6, 10]); ctx.lineDashOffset = reduce ? 0 : t / 40
+      ctx.beginPath(); ctx.arc(cx, cy, rr, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0
+      ctx.font = '11px ui-monospace, Consolas, monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#9aa4ab'
+      ctx.fillText('ZOOM OUT TO RETURN HOME', cx, cy + rr + 18); ctx.textAlign = 'start'; ctx.globalAlpha = 1
+    }
+  }
+  ctx.restore()
+  // portal rim while the core opens or closes
+  if (anim?.clip) { ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(56,214,245,.6)'; ctx.beginPath(); ctx.arc(...anim.clip.slice(0, 3), 0, 7); ctx.stroke() }
+  $('zread').textContent = `ZOOM ${k.toFixed(2)}x`
+}
+
+function drawLabels(focus) {
+  const list = [], seen = new Set()
+  const push = (n, strong) => { if (n && shown(n) && !seen.has(n)) { seen.add(n); list.push([n, strong]) } }
+  push(sel, true); push(hover, true); push(ringHover, true)
+  if (focus) for (const n of focus) push(n, true)
+  // the globe before a zoom-in: only the biggest front hubs get a name, the family names do the rest
+  if (window.brain && brain.sphereR() && cam.k < (fitK || 1) * 1.4) { let i = 0; for (const n of [...N].sort((a, b) => b.deg - a.deg)) if (shown(n) && n.za >= 0.6 && i++ < 8) push(n, false) }
+  else if (cam.k >= 1.6) { for (const n of [...N].sort((a, b) => b.deg - a.deg)) push(n, false) }
+  else if (cam.k >= 0.9) { for (const n of N) if (n.deg >= 6) push(n, false) }
+  ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'
+  const boxes = []
+  let drawn = 0
+  for (const [n, strong] of list) {
+    if (drawn > 220) break
+    const [x, y] = toScreen(n)
+    if (x < -10 || y < -10 || x > W + 10 || y > H + 10) continue
+    if (!strong && n.za < 0.6) continue // the far side of the sphere
+    const text = n.label.length > 34 ? n.label.slice(0, 33) + '…' : n.label
+    const isSel = n === sel
+    ctx.font = (isSel ? '600 ' : '') + '12px system-ui, "Segoe UI", sans-serif'
+    const w = ctx.measureText(text).width, lx = x + radius(n) + (isSel ? 18 : 6), box = [lx - 2, y - 9, lx + w + 2, y + 9]
+    if (!isSel && n !== hover && boxes.some(b => b[0] < box[2] && box[0] < b[2] && b[1] < box[3] && box[1] < b[3])) continue
+    boxes.push(box); drawn++
+    ctx.lineWidth = 4; ctx.strokeStyle = BG; ctx.strokeText(text, lx, y)
+    ctx.fillStyle = isSel ? ORANGE : strong ? '#e6e9eb' : '#9aa4ab'
+    ctx.fillText(text, lx, y)
+  }
+}
+
+// ---------- pointer input (brain mode only; the core is a button at home) ----------
+const pos = e => { const b = cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top] }
+function hit(x, y, slop) {
+  let best = null, bd = Infinity
+  for (const n of N) {
+    if (!shown(n)) continue
+    const [sx, sy] = toScreen(n), d = Math.hypot(sx - x, sy - y), sd = d - 30 * ((n.zs || 1) - 1) // the sphere: front nodes win
+    if (d < Math.max(radius(n), 6) + slop && sd < bd) { best = n; bd = sd }
+  }
+  return best
+}
+const ptrs = new Map()
+let drag = null, pinch = null
+cv.addEventListener('pointerdown', e => {
+  if (mode !== 'brain') return
+  cv.setPointerCapture(e.pointerId)
+  const [x, y] = pos(e)
+  ptrs.set(e.pointerId, [x, y])
+  tween = null
+  if (ptrs.size === 1) drag = { node: hit(x, y, e.pointerType === 'touch' ? 14 : 4), x, y, cx: cam.x, cy: cam.y, moved: false }
+  else if (ptrs.size === 2) {
+    const [[ax, ay], [bx, by]] = [...ptrs.values()]
+    if (drag && drag.node) release(drag.node)
+    drag = null
+    pinch = { d: Math.hypot(bx - ax, by - ay), m: [(ax + bx) / 2, (ay + by) / 2], k: cam.k, cx: cam.x, cy: cam.y }
+  }
+})
+cv.addEventListener('pointermove', e => {
+  if (mode !== 'brain') return
+  const [x, y] = pos(e)
+  if (!ptrs.has(e.pointerId)) {
+    if (e.pointerType === 'mouse') {
+      const h = hit(x, y, 4), f = !h && window.brain ? brain.famAt(x, y) : null
+      if (h !== hover || f !== famHover) { hover = h; famHover = f; cv.style.cursor = h || f ? 'pointer' : 'grab'; kick() }
+    }
+    return
+  }
+  ptrs.set(e.pointerId, [x, y])
+  if (pinch && ptrs.size === 2) {
+    const [[ax, ay], [bx, by]] = [...ptrs.values()]
+    const k = clamp(pinch.k * Math.hypot(bx - ax, by - ay) / pinch.d, 0.15, 6), m = [(ax + bx) / 2, (ay + by) / 2]
+    const wx = (pinch.m[0] - pinch.cx) / pinch.k, wy = (pinch.m[1] - pinch.cy) / pinch.k
+    cam.k = k; cam.x = m[0] - wx * k; cam.y = m[1] - wy * k; touched = true; kick()
+    fitK = fitTarget().k; zoomedOut()
+    return
+  }
+  if (!drag) return
+  if (!drag.moved && Math.hypot(x - drag.x, y - drag.y) < 4) return
+  drag.moved = true; touched = true
+  cv.style.cursor = 'grabbing'
+  if (window.brain && brain.turn(x - (drag.lx ?? drag.x), y - (drag.ly ?? drag.y), e.timeStamp)) { drag.lx = x; drag.ly = y; kick(); return }
+  if (drag.node) {
+    drag.node.fx = (x - cam.x) / cam.k; drag.node.fy = (y - cam.y) / cam.k
+    // a static layout has no forces: the node just moves
+    if (reduce || frozen) { drag.node.x = drag.node.fx; drag.node.y = drag.node.fy } else { alphaTarget = 0.3; if (alpha < 0.3) alpha = 0.3 }
+  } else { cam.x = drag.cx + x - drag.x; cam.y = drag.cy + y - drag.y }
+  kick()
+})
+function release(n) { n.fx = n.fy = null; alphaTarget = 0 }
+function up(e) {
+  if (!ptrs.has(e.pointerId)) return
+  ptrs.delete(e.pointerId)
+  if (pinch) { if (ptrs.size === 0) pinch = null; return }
+  if (drag) {
+    if (drag.node) release(drag.node)
+    const f = !drag.node && window.brain && brain.famAt(drag.x, drag.y)
+    if (!drag.moved && e.type === 'pointerup') { if (f) brain.famGo(f); else select(drag.node, false) }
+  }
+  drag = null
+  cv.style.cursor = hover ? 'pointer' : 'grab'
+  kick()
+}
+cv.addEventListener('pointerup', up)
+cv.addEventListener('pointercancel', up)
+cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && (hover || famHover) && !ptrs.size) { hover = famHover = null; kick() } })
+cv.addEventListener('wheel', e => { if (mode !== 'brain') return; e.preventDefault(); const [x, y] = pos(e); zoomAt(x, y, Math.exp(-e.deltaY * 0.0015)) }, { passive: false })
+const zoomCentre = f => { const [x, y] = areaCentre(); zoomAt(x, y, f) }
+// no wheel scrolls the page while the core opens, closes or just closed
+document.addEventListener('wheel', e => { if (mode === 'out' || mode === 'in' || performance.now() < wheelHold) e.preventDefault() }, { passive: false })
+$('zIn').onclick = () => zoomCentre(1.4)
+$('zOut').onclick = () => zoomCentre(1 / 1.4)
+$('zFit').onclick = () => { touched = true; fit() }
+
+function resize() {
+  const w = cv.clientWidth, h = cv.clientHeight
+  if (mode === 'brain' && W) { cam.x += (w - W) / 2; cam.y += (h - H) / 2 }
+  W = w; H = h; dpr = devicePixelRatio || 1
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr)
+  if (mode === 'brain' && !touched && !sel) fit(true)
+  // setting cv.width clears the canvas: redraw now, not on the next (maybe stalled) frame
+  if (mode === 'brain' || mode === 'home') draw(performance.now())
+  kick()
+}
+addEventListener('resize', () => { if (cv.clientWidth !== W || cv.clientHeight !== H) resize() })
+new ResizeObserver(() => { if (cv.clientWidth !== W || cv.clientHeight !== H) resize() }).observe(cv)
+
+// ---------- file card ----------
+const fmtSize = b => b < 1024 ? b + ' B' : (b / 1024).toFixed(1) + ' KB'
+const swatch = t => document.createRange().createContextualFragment(shapeSvg(t))
+
+function select(n, fly) {
+  sel = n
+  if (!n) {
+    if (card.contains(document.activeElement)) q.focus()
+    window.brain && brain.card(null)
+    card.hidden = true; kick(); return
+  }
+  const t = TYPES[n.type]
+  $('cType').replaceChildren(swatch(n.type), t.one)
+  $('cTitle').textContent = n.label
+  $('cPath').textContent = n.id
+  const d = new Date(n.mtime)
+  $('cMod').textContent = `${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${ago(n.mtime)})`
+  $('cSize').textContent = fmtSize(n.size)
+  $('cCopy').textContent = 'COPY PATH'
+  window.brain && brain.card(n)
+  const links = adj.get(n).slice().sort((a, b) => ORDER.indexOf(a.node.type) - ORDER.indexOf(b.node.type) || a.node.label.localeCompare(b.node.label))
+  $('cCount').textContent = links.length
+  $('cLinks').replaceChildren(...(links.length ? links.map(({ node, kind }) => {
+    const li = document.createElement('li'), b = document.createElement('button'), l = document.createElement('span'), k = document.createElement('span')
+    l.className = 'lbl'; l.textContent = node.label; k.className = 'kind'; k.textContent = kind
+    b.append(swatch(node.type), l, k)
+    b.title = node.id
+    b.onclick = () => { if (!shown(node)) { on[node.type] = true; buildChips(); window.brain && brain.allFolders() } select(node, true) }
+    li.append(b); return li
+  }) : [Object.assign(document.createElement('li'), { className: 'empty', textContent: 'No links to other files.' })]))
+  card.hidden = false
+  card.querySelector('.card-scroll').scrollTop = 0
+  // from the dial, opening a file opens the brain on it (one camera move, not two)
+  if (mode === 'home') return go('Brain')
+  if (mode !== 'brain') return kick()
+  if (fly) goTo(n.x, n.y, Math.max(cam.k, 1.6))
+  else {
+    const a = area(), [x, y] = toScreen(n)
+    if (x < a.l || x > a.r || y < a.t || y > a.b) goTo(n.x, n.y, cam.k)
+  }
+  kick()
+}
+$('cClose').onclick = () => select(null)
+$('cCopy').onclick = async () => {
+  try { await navigator.clipboard.writeText(sel.id); $('cCopy').textContent = 'COPIED' }
+  catch { $('cCopy').textContent = 'COPY FAILED' }
+  setTimeout(() => { $('cCopy').textContent = 'COPY PATH' }, 1600)
+}
+
+// ---------- search: works on the core at home and on the full map ----------
+function updateSearch() {
+  query = q.value.trim().toLowerCase()
+  const vis = N.filter(n => shown(n))
+  matches = query ? vis.filter(n => n.label.toLowerCase().includes(query) || n.id.toLowerCase().includes(query) || n.when.includes(query))
+    .sort((a, b) => b.label.toLowerCase().startsWith(query) - a.label.toLowerCase().startsWith(query) || b.deg - a.deg) : []
+  matchIdx = -1
+  $('qcount').textContent = query ? `${matches.length} of ${vis.length} files` : `${vis.length} files`
+  kick()
+}
+q.addEventListener('input', updateSearch)
+let gsItems = [], gsIdx = 0, gsSeq = 0
+const gsClose = () => { $('gs').hidden = true; q.setAttribute('aria-expanded', 'false'); q.removeAttribute('aria-activedescendant') }
+function gsPaint() {
+  $('gs').innerHTML = gsItems.length ? gsItems.map((r, i) => `<li role="option" id="gs${i}" data-i="${i}" aria-selected="${i === gsIdx}"><span class="k">${esc(r.kind)}</span><span class="t">${esc(r.title)}</span><span class="s">${esc(r.sub || r.path)}</span></li>`).join('')
+    : '<li><span class="k">none</span><span class="t">No matches</span></li>'
+  $('gs').hidden = false; q.setAttribute('aria-expanded', 'true')
+  if (gsItems.length) { q.setAttribute('aria-activedescendant', 'gs' + gsIdx); $('gs' + gsIdx).scrollIntoView({ block: 'nearest' }) }
+}
+q.addEventListener('input', async () => {
+  const v = q.value.trim(), seq = ++gsSeq
+  if (mode !== 'home' || !v) return gsClose()
+  const r = await getJ('/api/search?q=' + encodeURIComponent(v)).catch(() => [])
+  if (seq !== gsSeq) return
+  gsItems = r; gsIdx = 0; gsPaint()
+})
+q.addEventListener('blur', () => setTimeout(gsClose, 150))
+$('gs').addEventListener('mousedown', e => { const li = e.target.closest('[data-i]'); if (li) { e.preventDefault(); gsOpen(gsItems[+li.dataset.i]) } })
+// a file opens on the brain map; a session copies its resume command
+async function gsOpen(r) {
+  gsClose()
+  if (r.kind === 'session') {
+    const cmd = 'claude --resume ' + r.path.split(/[\\/]/).pop().replace(/\.jsonl$/, '')
+    try { await navigator.clipboard.writeText(cmd); $('qcount').textContent = 'Copied: ' + cmd } catch { $('qcount').textContent = cmd }
+    return
+  }
+  const norm = x => x.replace(/\\/g, '/').toLowerCase()
+  const n = N.find(n => norm(n.id) === norm(r.path))
+  if (!n) { $('qcount').textContent = 'Not on the map: ' + r.path; return }
+  q.value = ''; updateSearch()
+  on[n.type] = true; window.brain && brain.allFolders()
+  go('Brain'); setTimeout(() => select(n, true), 700)
+}
+q.addEventListener('keydown', e => {
+  if (mode === 'home' && !$('gs').hidden && gsItems.length) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); gsIdx = (gsIdx + (e.key === 'ArrowDown' ? 1 : gsItems.length - 1)) % gsItems.length; return gsPaint() }
+    if (e.key === 'Enter') { e.preventDefault(); return gsOpen(gsItems[gsIdx]) }
+  }
+  if (e.key !== 'Enter' || !matches.length || mode === 'in' || mode === 'out') return
+  e.preventDefault()
+  matchIdx = (matchIdx + 1) % matches.length
+  select(matches[matchIdx], true)
+})
+document.addEventListener('keydown', e => {
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)
+  const mod = e.ctrlKey || e.metaKey || e.altKey
+  if (e.key === '/' && !typing && !mod) { e.preventDefault(); q.focus(); q.select() }
+  else if ((e.key === 'b' || e.key === 'B') && !typing && !mod) {
+    e.preventDefault()
+    go(mode === 'brain' ? 'Home' : 'Brain')
+  }
+  else if (e.key === 'Escape') {
+    if (mode === 'brain') {
+      if (!card.hidden) select(null)
+      else if (document.activeElement === q && q.value) { q.value = ''; updateSearch() }
+      else collapse()
+    } else if (mode === 'home') {
+      if (page !== 'Home' && !typing) go('Home')
+      else if (!$('detail').hidden) closeDetail()
+      else if (document.activeElement === q && q.value) { q.value = ''; updateSearch() }
+    }
+  }
+})
+
+// ================= dashboard data (from A) =================
+const tickClock = () => $('clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+tickClock(); setInterval(tickClock, 30000)
+
+// ---------- pages and top nav ----------
+let page = 'Home'
+function setNav(name) {
+  document.querySelectorAll('#nav [data-go]').forEach(b => b.dataset.go === name ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'))
+}
+function go(name) {
+  if (mode === 'in' || mode === 'out') { pendingGo = name; return }
+  // Home folds the graph back into the core; another tab irises the map shut over the new page
+  if (mode === 'brain') { if (name === 'Brain') return; if (name === 'Home') return collapse(() => go(name)); leave() }
+  const lost = $('main').contains(document.activeElement)
+  page = name === 'Brain' ? 'Home' : name
+  const home = page === 'Home'
+  $('main').hidden = !home; $('homeMore').hidden = !home
+  document.querySelectorAll('.page').forEach(p => p.hidden = p.dataset.page !== page)
+  setNav(name)
+  window.shellHash && shellHash(name)
+  if (name === 'Brain') return expand()
+  if (home) return drawLeaders()
+  lazy(name)
+  scrollTo(0, 0)
+  if (lost) document.querySelector(`#nav [data-go="${name}"]`).focus()
+}
+$('nav').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go) })
+
+let runPoll = 0
+async function loadRuns() {
+  try {
+    const runs = await fetch('/api/runs').then(r => r.json())
+    $('runCount').textContent = runs.length
+    $('runLast').textContent = runs[0] ? `last: ${runs[0].skill}, ${runs[0].status}` : 'none yet. Run a skill from the dial or the Skills page.'
+    $('runsN').textContent = runs.length
+    $('runs').innerHTML = runs.slice(0, 12).map(r => {
+      const t = r.started || r.ended
+      return `<li class="row"><span><a href="/reports/${encodeURIComponent(r.report)}" target="_blank" rel="noopener">/${esc(r.skill)}</a></span><b class="st-${esc(r.status)}">${esc(r.status)}</b><small>${esc(r.model)} · ${esc(r.effort)}${r.mode ? " · " + esc(r.mode) : ""}${t ? ' · ' + ago(new Date(t).toISOString()) : ''}</small></li>`
+    }).join('') || '<li class="row"><span class="ph">No runs yet.</span></li>'
+    clearTimeout(runPoll)
+    if (runs.some(r => r.status === 'running')) runPoll = setTimeout(loadRuns, 3000)
+  } catch { $('runCount').textContent = '--' }
+}
+
+// ---------- home details: tokens 30d, projects, memory ----------
+const projName = p => p.replace(/^[A-Z]--(Users-[^-]+-?)?/, '').replace(/^Downloads-?/, '').replace(/-/g, ' ') || 'Downloads'
+let tab = 'skills', memFilter = null
+function renderTokens() {
+  const u = data.usage, days = Array.from({ length: 30 }, (_, i) => utcDay(29 - i))
+  const vals = days.map(d => sum(u.byDay[d])), max = Math.max(...vals, 1)
+  const tot = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0 }
+  for (const d of days) for (const k in tot) tot[k] += u.byDay[d]?.[k] || 0
+  const hit = tot.cacheRead / Math.max(1, tot.input + tot.cacheWrite + tot.cacheRead)
+  $('kpis').innerHTML = [[fmt(sum(tot)), 'total'], [fmt(tot.output), 'output'], [Math.round(hit * 100) + '%', 'cache hit']]
+    .map(([n, l]) => `<div><div class="num">${n}</div><span class="label">${l}</span></div>`).join('')
+  $('bars').innerHTML = vals.map((v, i) => `<i class="${i === 29 ? 'today' : ''}" style="height:${Math.max(2, v / max * 100)}%" title="${days[i]}: ${fmt(v)} tokens"></i>`).join('')
+  $('ax0').textContent = new Date(days[0]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+  $('tabs').innerHTML = [['skills', 'Skills'], ['projects', 'Projects'], ['sessions', 'Sessions'], ['models', 'Models']]
+    .map(([k, l]) => `<button type="button" class="chip" aria-pressed="${tab === k}" data-tab="${k}">${l}</button>`).join('')
+  let rows = []
+  if (tab === 'skills') rows = Object.entries(u.bySkill).map(([k, v]) => ({ t: '/' + k, s: `${v.runs} runs, last ${ago(v.last)}`, n: sum(v.tokens) }))
+  if (tab === 'projects') rows = Object.entries(u.byProject).map(([k, v]) => ({ t: projName(k), s: '', n: sum(v) }))
+  if (tab === 'sessions') rows = u.sessions.slice(0, 40).map(x => ({ t: x.title || projName(x.project), s: `${x.turns} prompts, ${ago(x.last)}`, n: sum(x.tokens) }))
+  if (tab === 'models') rows = Object.entries(u.byModel).filter(([k]) => !k.startsWith('<')).map(([k, v]) => ({ t: k, s: `${fmt(v.output)} output`, n: sum(v) }))
+  if (tab !== 'sessions') rows.sort((a, b) => b.n - a.n)
+  rows = rows.slice(0, 12)
+  const top = Math.max(...rows.map(r => r.n), 1)
+  $('rank').innerHTML = rows.map(r => `<li class="row"><span title="${esc(r.t)}">${esc(r.t)}</span><b>${fmt(r.n)}</b>${r.s ? `<small>${esc(r.s)}</small>` : ''}<i style="--w:${(r.n / top * 100).toFixed(1)}%"></i></li>`).join('') || '<li class="row"><span class="ph">No data yet.</span></li>'
+  $('rankNote').textContent = tab === 'skills' ? 'Skill tokens are est.: every turn from the skill call to your next prompt.' : 'All time. Totals include cache reads.'
+}
+$('tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) { tab = b.dataset.tab; renderTokens() } })
+$('refresh').addEventListener('click', async () => {
+  $('refresh').disabled = true; $('refresh').textContent = 'Reading'
+  try { data.usage = await fetch('/api/usage?refresh').then(r => r.json()); renderTokens(); renderDeck() } catch {}
+  $('refresh').disabled = false; $('refresh').textContent = 'Refresh'
+})
+
+const MEMC = { user: '#eafaff', feedback: '#38d6f5', project: '#a8e9f7', reference: '#2ea6c4' }
+const dot = t => `<span class="sw" style="--c:${MEMC[t] || '#9aa4ab'}"></span>`
+function renderMemory() {
+  const m = data.memory, counts = {}
+  for (const e of m.entries) counts[e.type] = (counts[e.type] || 0) + 1
+  $('memN').textContent = m.count
+  $('memTypes').innerHTML = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([t, n]) =>
+    `<button type="button" class="chip" aria-pressed="${memFilter === t}" data-type="${esc(t)}">${dot(t)}${esc(t)} <b>${n}</b></button>`).join('')
+  $('memList').innerHTML = m.entries.filter(e => !memFilter || e.type === memFilter).sort((a, b) => (b.mtime || '').localeCompare(a.mtime || ''))
+    .map(e => `<li class="row" title="${esc(e.hook || '')}"><span>${dot(e.type)}${esc(e.title)}</span><b>${e.mtime ? ago(e.mtime) : ''}</b>${e.hook ? `<small>${esc(e.hook)}</small>` : ''}</li>`).join('') || '<li class="row"><span class="ph">No memory files.</span></li>'
+  const seen = new Set(), projects = m.entries.filter(e => e.state).sort((a, b) => b.state.mtime.localeCompare(a.state.mtime)).filter(e => !seen.has(e.state.path) && seen.add(e.state.path))
+  $('projCount').textContent = projects.length
+  $('projects').innerHTML = projects.map(e => `<li class="row" title="${esc(e.state.path)}"><span>${esc(e.title)}</span><b>${ago(e.state.mtime)}</b><small>${esc(e.state.kind)}.md · ${esc(e.state.path.split(/[\\/]/).slice(-2, -1)[0] || '')}</small><em class="gb" data-dir="${esc(gkey(e.state.path.replace(/[\\/][^\\/]*$/, '')))}"></em></li>`).join('') || '<li class="row"><span class="ph">No project state files linked from memory.</span></li>'
+  paintGit()
+}
+
+// Git badges: fetched after the panel renders so Home is not slowed. Read only.
+let gitRepos = null
+const gkey = p => p.replace(/\//g, '\\').toLowerCase()
+function gitBadges(r) {
+  const b = (n, label, hot) => n ? `<span class="${hot ? 'hot' : ''}">${n} ${label}</span>` : ''
+  return b(r.dirty, 'dirty', 1) + b(r.ahead, 'unpushed', 1) + b(r.worktrees, r.worktrees === 1 ? 'worktree' : 'worktrees') + b(r.merged, 'merged')
+}
+function paintGit() {
+  const go = () => document.querySelectorAll('#projects em.gb').forEach(el => { const r = gitRepos.get(el.dataset.dir); el.innerHTML = r && r.repo ? gitBadges(r) : '' })
+  if (gitRepos) return go()
+  fetch('/api/git').then(r => r.json()).then(d => { gitRepos = new Map(d.repos.map(r => [gkey(r.path), r])); go() }).catch(() => {})
+}
+// Setup sync chip: ~/.claude and the config.json gitRepos, from existing refs only.
+function paintSetup() {
+  fetch('/api/setup-sync').then(r => r.json()).then(d => {
+    const rs = d.repos.filter(r => r.repo), el = $('setupChip')
+    if (!rs.length) return
+    const sum = k => rs.reduce((n, r) => n + (r[k] || 0), 0), dirty = sum('dirty'), ahead = sum('ahead'), behind = sum('behind')
+    const parts = [dirty && dirty + ' dirty', ahead && ahead + ' unpushed', behind && behind + ' behind'].filter(Boolean)
+    el.hidden = false; el.classList.toggle('stale', !!(dirty || ahead))
+    el.innerHTML = 'SETUP <b>' + (parts.join(', ') || 'synced') + '</b>'
+    el.title = rs.map(r => r.path + ': ' + ([r.dirty && r.dirty + ' dirty', r.upstream ? (r.ahead ? r.ahead + ' ahead' : '') : 'no upstream', r.behind && r.behind + ' behind'].filter(Boolean).join(', ') || 'synced')).join('\n')
+  }).catch(() => {})
+}
+paintSetup()
+$('memTypes').addEventListener('click', e => { const b = e.target.closest('[data-type]'); if (!b) return; memFilter = memFilter === b.dataset.type ? null : b.dataset.type; renderMemory() })
+
+// ---------- skills page: deck with run and settings ----------
+const store = { get: k => { try { return JSON.parse(localStorage.getItem(k)) } catch { return null } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} } }
+const cfgs = store.get('aos.cfg') || {}
+let openSk = null
+const ICON = {
+  play: '<svg viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M3.5 2.2v7.6L9.6 6z"/></svg>',
+  cfg: '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M2 3.5h8M2 8.5h8"/><circle cx="4.5" cy="3.5" r="1.3" fill="var(--bg)"/><circle cx="7.5" cy="8.5" r="1.3" fill="var(--bg)"/></svg>',
+}
+const choice = s => ({ model: data.skills.models.includes(s.model) ? s.model : 'sonnet', effort: 'medium', mode: 'default', ...(cfgs[s.id] || {}) })
+const runBody = (id, c, prompt) => JSON.stringify({ skill: id, ...c, mode: c.mode === 'default' ? undefined : c.mode, prompt })
+function renderDeck() {
+  if (!data.skills) return
+  const f = $('skq').value.trim().toLowerCase(), by = data.usage?.bySkill || {}
+  const list = data.skills.skills.filter(s => !f || s.id.toLowerCase().includes(f) || (s.description || '').toLowerCase().includes(f))
+    .sort((a, b) => (by[b.id]?.runs || 0) - (by[a.id]?.runs || 0) || a.id.localeCompare(b.id))
+  $('skCount').textContent = list.length
+  // the choice most skills share goes in the header; a row shows a tag only when it differs
+  const common = Object.fromEntries(['model', 'effort', 'mode'].map(k => { const n = {}; list.forEach(s => { const v = choice(s)[k]; n[v] = (n[v] || 0) + 1 }); return [k, Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0]] }))
+  $('skShared').textContent = list.length ? `default ${common.model}, ${common.effort}${common.mode !== 'default' ? ', ' + common.mode : ''}` : ''
+  // used skills first; the rest sit behind "N more" unless a filter is set
+  const used = list.filter(s => by[s.id]?.runs).length, keep = f || renderDeck.all ? list.length : Math.max(used, 12), shown = list.slice(0, keep)
+  // settings open full width after the last card of the open card's row
+  const cols = Math.max(1, getComputedStyle($('deck')).gridTemplateColumns.split(' ').length)
+  const oi = shown.findIndex(s => s.id === openSk), rowEnd = oi < 0 ? -1 : Math.min((Math.floor(oi / cols) + 1) * cols - 1, shown.length - 1)
+  let html = ''
+  shown.forEach((s, i) => {
+    const c = choice(s), runs = by[s.id]?.runs || 0
+    const tags = [['model', c.model, 'm-' + c.model], ['effort', c.effort, ''], ['mode', c.mode, '']].filter(([k, v]) => v !== common[k]).map(([, v, cl]) => `<span class="tag ${esc(cl)}">${esc(v)}</span>`)
+    if (s.model) tags.push('<span class="tag">pinned</span>')
+    html += `<div class="sk${openSk === s.id ? ' open' : ''}" data-id="${esc(s.id)}">
+      <span class="nm" title="${esc(s.description || '')}">/${esc(s.id)}</span>
+      <span class="t-num sk-n${runs ? '' : ' z'}" title="${runs} runs">${runs}</span>
+      <span class="acts"><button type="button" class="ib" data-act="run" aria-label="Run /${esc(s.id)}">${ICON.play}</button><button type="button" class="ib" data-act="cfg" aria-expanded="${openSk === s.id}" aria-label="Settings for /${esc(s.id)}">${ICON.cfg}</button></span>
+      ${tags.length ? `<span class="mt sk-tags">${tags.slice(0, 2).join('')}</span>` : ''}
+    </div>`
+    if (i === rowEnd) html += cfgPanel(s)
+  })
+  if (!f && list.length > Math.max(used, 12)) html += `<button type="button" class="btn sk-more" data-more aria-expanded="${!!renderDeck.all}">${renderDeck.all ? 'Show fewer skills' : `${list.length - keep} more skills, 0 runs`}</button>`
+  $('deck').innerHTML = html || '<p class="ph">No skill matches.</p>'
+}
+function cfgPanel(s) {
+  const c = choice(s), seg = (key, opts) => `<div class="opts" role="group" aria-label="${key}">${opts.map(o => `<button type="button" class="chip" aria-pressed="${c[key] === o}" data-set="${key}" data-val="${o}">${o}</button>`).join('')}</div>`
+  const d = s.description || ''
+  return `<div class="cfg" data-id="${esc(s.id)}">
+    <p class="t-meta">${esc(d.slice(0, 220))}${d.length > 220 ? '...' : ''}</p>
+    <div><span class="lbl">Model</span>${seg('model', data.skills.models)}</div>
+    <div><span class="lbl">Effort</span>${seg('effort', data.skills.efforts)}</div>
+    <div><span class="lbl">Permission mode</span>${seg('mode', ['default', 'plan', 'acceptEdits'])}</div>
+    <div><button type="button" class="btn" data-act="matrix">Model x effort matrix</button></div>
+    <div><label class="lbl" for="arg">Input (optional)</label><textarea id="arg" placeholder="Arguments passed after /${esc(s.id)}"></textarea></div>
+    <div class="foot"><button type="button" class="btn go" data-act="run">Run in background</button>${s.source === 'user' ? '<button type="button" class="btn" data-act="archive">Archive skill</button>' : ''}</div>
+  </div>`
+}
+$('deck').addEventListener('click', async e => {
+  const host = e.target.closest('[data-id]'); if (!host) return
+  const id = host.dataset.id, s = data.skills.skills.find(x => x.id === id)
+  const set = e.target.closest('[data-set]')
+  if (set) {
+    cfgs[id] = { ...choice(s), [set.dataset.set]: set.dataset.val }; store.set('aos.cfg', cfgs)
+    const arg = $('arg')?.value; renderDeck(); if ($('arg')) $('arg').value = arg || ''
+    return document.querySelector(`#deck [data-set="${set.dataset.set}"][data-val="${set.dataset.val}"]`)?.focus()
+  }
+  const act = e.target.closest('[data-act]')?.dataset.act
+  if (act === 'cfg') {
+    openSk = openSk === id ? null : id; renderDeck()
+    return document.querySelector(`#deck .sk[data-id="${CSS.escape(id)}"] [data-act="cfg"]`)?.focus()
+  }
+  if (act === 'matrix') return skMatrix(choice(s), (model, effort) => { cfgs[id] = { ...choice(s), model, effort }; store.set('aos.cfg', cfgs); const arg = $('arg')?.value; renderDeck(); if ($('arg')) $('arg').value = arg || '' })
+  if (act === 'archive') return archive(id).catch(() => { $('deckStatus').textContent = 'Server not reachable.' })
+  if (act !== 'run') return
+  const prompt = host.classList.contains('cfg') ? $('arg').value : ''
+  $('deckStatus').textContent = `Starting /${id}...`
+  try {
+    const r = await fetch('/api/run', { method: 'POST', headers: { 'content-type': 'application/json' }, body: runBody(id, choice(s), prompt) }).then(r => r.json())
+    $('deckStatus').textContent = r.error ? 'Error: ' + r.error : `Running /${id}. Report: ${r.report}`
+    if (!r.error) { openSk = null; renderDeck() }
+  } catch { $('deckStatus').textContent = 'Server not reachable.' }
+  loadRuns()
+})
+$('skq').addEventListener('input', renderDeck)
+addEventListener('resize', () => { if (openSk) renderDeck() })
+
+// ---------- spend, live sessions, artifacts, timeline, apps, routines ----------
+const usd = n => '$' + (n >= 100 ? Math.round(n).toLocaleString('en-US') : (+n).toFixed(2))
+const getJ = u => fetch(u).then(r => r.json())
+const none = t => `<li class="row"><span class="ph">${t}</span></li>`
+const idle = m => m < 60 ? m + ' min' : m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' d'
+const kpi = rows => rows.map(([n, l]) => `<div><div class="num">${n}</div><span class="label">${l}</span></div>`).join('')
+let spWin = '7d', spData = null
+function renderSpendProjects() {
+  $('spTabs').innerHTML = [['1d', '1 d'], ['7d', '7 d'], ['30d', '30 d']].map(([k, l]) => `<button type="button" class="chip" aria-pressed="${spWin === k}" data-sp="${k}">${l}</button>`).join('')
+  const rows = (spData && spData[spWin]) || [], top = Math.max(...rows.map(r => r.usd), 0.01)
+  $('spProj').innerHTML = rows.map(r => `<li class="row"><span title="${esc(projName(r.project))}">${esc((n => n.length > 32 ? n.replace(/^.+?\s(?=.{1,30}$)/, '...') : n)(projName(r.project)))}</span><b>${usd(r.usd)}</b><small>${fmt(r.tokens)} tokens</small><i style="--w:${(r.usd / top * 100).toFixed(1)}%"></i></li>`).join('') || none('No usage in this window.')
+}
+async function loadSpendProjects() {
+  try { spData = await getJ('/api/spend/projects') } catch { $('spProj').innerHTML = none('Project spend: read failed.'); return }
+  renderSpendProjects()
+}
+$('spTabs').addEventListener('click', e => { const b = e.target.closest('[data-sp]'); if (b) { spWin = b.dataset.sp; renderSpendProjects() } })
+async function loadHome() {
+  // live.js renders burn rate, live sessions and Needs you, and polls every 30 s
+  // a fast first read can finish before live.js (loaded after this script) has run
+  if (!window.live) await new Promise(r => addEventListener('DOMContentLoaded', r, { once: true }))
+  const p = await window.live.home(), w = p && p.windows
+  const c = data.usage.cost, d30 = Array.from({ length: 30 }, (_, i) => c.byDay[utcDay(i)] || 0).reduce((a, b) => a + b, 0)
+  if (w) {
+    const pct = x => x.pct == null ? '' : `, ${Math.round(x.pct * 100)}% of limit`
+    $('spend').innerHTML = kpi([[usd(w.fiveHour.usd), 'est. last 5 h' + pct(w.fiveHour)], [usd(w.sevenDay.usd), 'est. last 7 days' + pct(w.sevenDay)], [usd(d30), 'est. last 30 days']])
+    $('limits').textContent = 'API list prices, not your plan bill.'
+    loadSpendProjects()
+  } else {
+    $('live').innerHTML = none('Live data: server not reachable.')
+    $('needList').innerHTML = none('Live data: server not reachable.')
+  }
+  getJ('/api/cold-cache').then(k => {
+    $('cold').textContent = `Cold cache, last 30 days (est.): ${k.reloads} reloads cost ${usd(k.reloadCost)}. Keep-warm pings would save ${usd(k.netSaving)}.`
+  }).catch(() => { $('cold').textContent = 'Cold-cache check failed.' })
+  loadRoutines().catch(() => { $('rtLine').textContent = 'Routines: read failed' })
+  window.hud?.render(p) // cockpit gauges, hour ring and widget values (hud.js)
+}
+const AREAS = [['skills', 'Skills'], ['memory', 'Memory'], ['claude', 'Claude'], ['projects', 'Projects'], ['routines', 'Routines'], ['apps', 'Applications'], ['other', 'Other']]
+const loadTimeline = () => rttl.loadTimeline() // grid, range chips, file list and diffs live in rttl.js
+
+async function loadApps() {
+  const erP = getJ('/api/errors?days=7').catch(() => null) // slow first scan: lists render first, errors fill in after
+  const a = await getJ('/api/apps')
+  let er = null
+  const open = {}, SHOW = 8 // rows shown before "N more"
+  // line 2 shows kind and last use; hover or focus swaps in errors, tools and overhead
+  const row = x => {
+    const n = er ? er.byApp[x.name] || 0 : 0, s = `${esc(x.kind)} · ${x.last ? 'last ' + ago(x.last) : 'never used'}`
+    const l = `${s}${er ? ` · ${n} error${n === 1 ? "" : "s"} 7d` : ''}${x.topTools.length ? ' · ' + x.topTools.slice(0, 3).map(t => esc(t.name)).join(', ') : ''} · est. ${fmt(x.estOverhead)} tokens per session`
+    return `<li class="row ap-row" tabindex="0"><span class="t-body" title="${esc(x.name)}">${esc(x.name)}</span><b class="t-num">${fmt(x.calls30)}</b><small class="t-meta"><span class="ap-s">${s}${n ? ` · <em>${n} error${n === 1 ? "" : "s"} 7d</em>` : ''}</span><span class="ap-l">${l}</span></small></li>`
+  }
+  const fill = (id, items, empty) => {
+    const all = open[id], vis = all ? items : items.slice(0, SHOW)
+    $(id).innerHTML = vis.map(row).join('') + (items.length > vis.length ? `<li class="more-row"><button type="button" class="btn" data-more="${id}">${items.length - vis.length} more</button></li>` : '') || none(empty)
+  }
+  $('apN').textContent = a.items.length + ', calls in 30 days'
+  const lists = () => {
+    fill('apList', a.items, 'No MCP servers, plugins or connectors found.')
+    fill('apUnused', a.unused30, 'Every app was used in the last 30 days.')
+  }
+  for (const id of ['apList', 'apUnused']) $(id).addEventListener('click', e => { if (e.target.closest('[data-more]')) { open[id] = true; lists() } })
+  lists()
+  erP.then(r => { if (r) { er = r; lists() } })
+  const tb = window.prompts.teachBox()
+  $('audit').closest('.foot').before(tb.el)
+  $('audit').onclick = async () => {
+    try { await navigator.clipboard.writeText(tb.apply(a.auditPrompt)); $('auditStatus').textContent = 'Copied. Paste it into a Claude chat.' } catch { $('auditStatus').textContent = 'The browser blocked the copy.' }
+  }
+}
+
+let rtSum = null
+async function loadRoutines() {
+  const r = await getJ('/api/routines'), t = r.totals
+  rtSum = t
+  $('rtLine').textContent = `Routines: ${t.active} active, ${t.demand} on demand, ${t.paused} paused`
+  window.rtData = r // rttl.js draws the page; if it has not loaded yet it reads this on start
+  if (window.rttl) rttl.routines(r)
+}
+const loaded = {}
+const LAZY = { Timeline: loadTimeline, Apps: loadApps, Routines: () => window.rtData || loadRoutines(), Planner: () => window.planner?.load() } // Routines opened before Home finished loads itself
+function lazy(name) {
+  if (!LAZY[name] || loaded[name]) return
+  const sec = () => document.querySelector(`[data-page="${name}"]`)
+  loaded[name] = Promise.resolve().then(() => LAZY[name]()).then(() => sec()?.querySelector('.lazyfail')?.remove()).catch(() => {
+    loaded[name] = null
+    let f = sec()?.querySelector('.lazyfail')
+    if (!f && sec()) { f = document.createElement('p'); f.className = 'ph lazyfail'; sec().prepend(f) }
+    if (f) f.textContent = 'Read failed. Open the page again to retry.'
+  })
+}
+
+// ---------- skills page: report viewer, add, archive ----------
+$('runs').addEventListener('click', async e => {
+  const a = e.target.closest('a[href^="/reports/"]'); if (!a || e.ctrlKey || e.metaKey) return
+  e.preventDefault()
+  try {
+    const r = await getJ('/api/report?file=' + encodeURIComponent(decodeURIComponent(a.pathname.split('/').pop())))
+    if (r.error) throw 0
+    const m = r.meta
+    $('repMeta').textContent = [m.skill, m.model, m.effort, m.mode, m.duration ? Math.round(m.duration / 1000) + ' s' : 'running', m.exit != null ? 'exit ' + m.exit : ''].filter(Boolean).join(' · ')
+    $('repBody').textContent = r.body
+    $('report').hidden = false
+    $('repClose').focus()
+  } catch { $('deckStatus').textContent = 'Report not found.' }
+})
+$('repClose').addEventListener('click', () => { $('report').hidden = true })
+$('addGo').addEventListener('click', async () => {
+  const prompt = $('addSk').value.trim()
+  if (!prompt) return $('addStatus').textContent = 'Say what the skill does first.'
+  $('addStatus').textContent = 'Starting skill-creator...'
+  try {
+    const r = await fetch('/api/skill/add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt }) }).then(r => r.json())
+    $('addStatus').textContent = r.error ? 'Error: ' + r.error : 'Running in background. See Runs.'
+    if (!r.error) $('addSk').value = ''
+  } catch { $('addStatus').textContent = 'Server not reachable.' }
+  loadRuns()
+})
+async function archive(id, un) {
+  const r = await fetch('/api/skill/' + (un ? 'unarchive' : 'archive'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id }) }).then(r => r.json())
+  if (r.error) return $('deckStatus').textContent = 'Error: ' + r.error
+  data.skills = await getJ('/api/skills')
+  openSk = null; renderDeck()
+  $('deckStatus').innerHTML = un ? `Restored ${esc(r.name)}.` : `Archived ${esc(r.name)} to skills/.archive. <button type="button" class="btn" id="undo">Undo</button>`
+  $('undo')?.addEventListener('click', () => archive(r.name, true))
+  $('undo')?.focus()
+}
+
+async function load(refresh) {
+  try {
+    const [sk, mem, us] = await Promise.all(['/api/skills', '/api/memory', '/api/usage' + (refresh === true ? '?refresh=1' : '')].map(u => fetch(u).then(r => r.json())))
+    if (!us.ready) { $('sync').textContent = 'indexing logs'; return setTimeout(load, 3000) }
+    data = { skills: sk, memory: mem, usage: us }
+    $('sync').textContent = '' // normal state: the DATA stamp already shows freshness; #sync speaks only on problems
+
+    const days14 = Array.from({ length: 14 }, (_, i) => utcDay(13 - i))
+    const t7 = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0 }
+    for (const d of days14.slice(7)) for (const k in t7) t7[k] += us.byDay[d]?.[k] || 0
+    const all7 = sum(t7)
+    $('tok7').innerHTML = fmt(all7) + '<small>tokens</small>'
+    spark($('sparkTok'), days14.map(d => sum(us.byDay[d])))
+    gauge($('gCache'), all7 ? t7.cacheRead / all7 : 0)
+    gauge($('gOut'), all7 ? t7.output / all7 : 0)
+
+    const models = Object.entries(us.byModel).filter(([n]) => n !== '<synthetic>').map(([n, v]) => [n, sum(v)]).sort((a, b) => b[1] - a[1]).slice(0, 4)
+    const mMax = models[0]?.[1] || 1
+    $('models').innerHTML = models.map(([n, v]) => `<li class="row"><span title="${esc(n)}">${esc(n)}</span><b>${fmt(v)}</b><i style="--w:${(v / mMax * 100).toFixed(1)}%"></i></li>`).join('')
+
+    const perDay = {}
+    for (const s of us.sessions) { const d = (s.last || '').slice(0, 10); perDay[d] = (perDay[d] || 0) + 1 }
+    $('ses7').innerHTML = days14.slice(7).reduce((a, d) => a + (perDay[d] || 0), 0) + `<small>${perDay[utcDay(0)] || 0} today</small>`
+    spark($('sparkSes'), days14.map(d => perDay[d] || 0))
+
+    const types = {}
+    for (const e of mem.entries) types[e.type] = (types[e.type] || 0) + 1
+    const tMax = Math.max(...Object.values(types), 1)
+    const newest = [...mem.entries].sort((a, b) => b.mtime.localeCompare(a.mtime))[0]
+    $('memCount').textContent = mem.count + ' files'
+    $('memory').innerHTML = Object.entries(types).sort((a, b) => b[1] - a[1]).map(([k, v]) =>
+      `<li class="row"><span>${esc(k)}</span><b>${v}</b><i style="--w:${(v / tMax * 100).toFixed(1)}%"></i></li>`).join('') +
+      (newest ? `<li class="row"><span class="label" title="${esc(newest.title)}">newest: ${esc(newest.title)}</span></li>` : '')
+
+    const today = fmt(sum(us.byDay[utcDay(0)]))
+    const projects = Object.keys(us.byProject).length
+    const view = (label, readout) => ({ label, full: label, readout: typeof readout === 'function' ? readout : () => readout })
+    items = [
+      view('Home', ['Tokens today', today, 'UTC day, all sessions']),
+      view('Brain', () => graphOk ? ['Brain', String(N.length), `files, ${E.length} links. Enter or B opens`] : ['Brain', String(mem.count), 'memory files, map loading']),
+      view('Timeline', ['Projects', String(projects), 'with logs. Open for files edited per day']),
+      view('Routines', () => rtSum ? ['Routines', String(rtSum.active), `active, ${rtSum.paused} paused`] : ['Routines', '--', 'reading']),
+      view('Skills', ['Skills installed', String(sk.skills.length), Object.keys(us.bySkill).length + ' used at least once']),
+      view('Sessions', () => ['Sessions', String(us.sessions.filter(x => (x.last || '') >= utcDay(6)).length), `in 7 days, ${window.shellLive ? window.shellLive.n : 0} live now. Open for transcripts`]),
+      view('Apps', ['Apps', '--', 'MCP servers, plugins and connectors. Open for use']),
+    ]
+    const ids = new Set(sk.skills.map(s => s.id))
+    Object.entries(us.bySkill).filter(([n]) => ids.has(n)).sort((a, b) => b[1].runs - a[1].runs).slice(0, 6).forEach(([n, v]) => {
+      const s = sk.skills.find(x => x.id === n), tok = fmt(sum(v.tokens))
+      const it = { skill: true, id: n, label: n.split(':').pop(), full: n, src: s.source,
+        body: (s.description || '').slice(0, 220) + ((s.description || '').length > 220 ? '...' : ''),
+        stats: [['runs', v.runs], ['tokens', tok], ['last used', ago(v.last)]] }
+      it.readout = () => ['Quick run', String(v.runs), `runs of ${n}, last ${ago(v.last)}` + (graphOk && !skillNode(it) ? '. Plugin skill, not in file map' : '')]
+      items.push(it)
+    })
+    $('dModel').innerHTML = sk.models.map(m => `<option${m === 'sonnet' ? ' selected' : ''}>${m}</option>`).join('')
+    $('dEffort').innerHTML = sk.efforts.map(m => `<option${m === 'medium' ? ' selected' : ''}>${m}</option>`).join('')
+    $('pmode').textContent = sk.permissionMode === 'plan' ? 'Plan mode' : sk.permissionMode
+    renderTokens(); renderMemory(); renderDeck()
+    loadHome()
+    buildRing()
+    homeReadout()
+    drawLeaders()
+    window.shellStamp && shellStamp()
+  } catch (e) {
+    $('sync').textContent = 'server not reachable'
+    setReadout('Offline', '--', 'start node server.js')
+  }
+}
+load()
+loadRuns()
+</script>
+<script src="hud.js"></script>
+<script src="skills.js"></script>
+<script src="brain.js"></script>
+<script src="sessions.js"></script>
+<script src="live.js"></script>
+<script src="rttl.js"></script>
+<script src="hub.js"></script>
+<script src="shell.js"></script>
+<script src="planner.js"></script>
+<script src="depth.js"></script>
+<script src="next.js"></script>
+<script type="module" src="fx.js"></script>
+</body>
+</html>
