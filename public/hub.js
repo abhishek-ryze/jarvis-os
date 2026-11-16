@@ -55,7 +55,7 @@
     const bar = root.querySelector('.hub-actions')
     let m
     bar.append(
-      parts.button('Open file', { go: true, onClick: () => post('/api/open', { path: x.path }).then(() => say('Opened in Explorer.')).catch(e => say(e.message)) }),
+      parts.button('Open file', { go: true, onClick: () => post('/api/open', { path: x.path }).then(() => say('Opened.')).catch(e => say(e.message)) }),
       parts.button('Hide', { onClick: () => post('/api/artifacts/hide', { path: x.path }).then(() => { items = items.filter(i => i !== x); renderArts(); m.close() }).catch(e => say(e.message)) }),
       parts.button('Close', { onClick: () => m.close() }))
     root.insertAdjacentHTML('beforeend', '<p class="label">Hide removes it from this dashboard only. The file stays on disk.</p>')

@@ -20,10 +20,10 @@ The user may say "Set up Jarvis OS for me", or paste the GitHub link of this rep
    - Folders with HTML outputs or documents to list on the Apps page (`artifactDirs`), and folders of single-file HTML apps (`microAppDirs`). Full paths. Default: none.
    - Extra git repos for the setup sync chip (`gitRepos`). Full paths. Default: none.
    - Permission mode for skills run from the app (`permissionMode`): `plan` (safest, read-only), `default` or `acceptEdits`. Default: `plan`.
-   - Windows only: start the dashboard when you log in? Default: no.
+   - Windows or macOS: start the dashboard when you log in? Default: no.
 5. **Demo** (if asked): start `node server.js --demo --port=4319` in the background, give the user http://127.0.0.1:4319, and stop it when they are done.
 6. **Config**: copy `config.example.json` to `config.json` in the app folder and fill in the answers. Leave `limits` as they are; the user can change them on Home with "Edit limits". Never commit `config.json`; it is in `.gitignore`.
-7. **Run**: if the user chose autostart, run `powershell -ExecutionPolicy Bypass -File scripts\install-autostart.ps1` (it also starts the server now; undo with `scripts\uninstall-autostart.ps1`). Otherwise start `node server.js` in the background. If port 4317 is busy, use `--port=N`. Check that http://127.0.0.1:4317 answers (for example `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4317/` gives 200).
+7. **Run**: if the user chose autostart, on Windows run `powershell -ExecutionPolicy Bypass -File scripts\install-autostart.ps1` (undo with `scripts\uninstall-autostart.ps1`); on macOS run `bash scripts/install-autostart.sh` (undo with `bash scripts/uninstall-autostart.sh`). Both also start the server now. Otherwise start `node server.js` in the background. If port 4317 is busy, use `--port=N`. Check that http://127.0.0.1:4317 answers (for example `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4317/` gives 200).
 8. **Finish**: give the user:
    - The link http://127.0.0.1:4317 (the first load reads all sessions and can take a few seconds).
    - How to start it again later: `node server.js` in the app folder.

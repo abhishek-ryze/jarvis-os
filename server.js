@@ -35,6 +35,7 @@ const CONFIG = path.join(scan.DATA, 'config.json')
 // Native installer path first, else `claude` on PATH.
 const NATIVE = path.join(require('os').homedir(), '.local', 'bin', process.platform === 'win32' ? 'claude.exe' : 'claude')
 const CLAUDE = process.env.CLAUDE_BIN || (fs.existsSync(NATIVE) ? NATIVE : 'claude')
+const OPENER = require('./lib/routes-sessions').OPENER
 const MODELS = ['haiku', 'sonnet', 'opus']
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
 const MODES = ['plan', 'acceptEdits', 'bypassPermissions']
@@ -193,8 +194,7 @@ http.createServer(async (req, res) => {
       if (!b) return
       const p = b.path
       if (!(artifacts.isAllowed(config(), p) || brainIndex.isIndexed(graphPaths, p)) || !fs.existsSync(p)) return send(res, 403, { error: 'path not allowed' })
-      // ponytail: explorer.exe is Windows only; use open or xdg-open if this ever runs elsewhere.
-      spawn('explorer.exe', [path.resolve(p)], { detached: true, stdio: 'ignore', windowsHide: true }).on('error', () => {}).unref()
+      spawn(OPENER, [path.resolve(p)], { detached: true, stdio: 'ignore', windowsHide: true }).on('error', () => {}).unref()
       return send(res, 200, { opened: path.resolve(p) })
     }
     if (url.pathname === '/api/skills/stats') {

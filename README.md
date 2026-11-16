@@ -18,7 +18,7 @@ Everything runs on your computer. No account, no cloud, no npm install, no telem
 - [Keyboard](#keyboard)
 - [Configuration](#configuration)
 - [Planner and Google Calendar](#planner-and-google-calendar)
-- [Start with Windows](#start-with-windows)
+- [Start at login](#start-at-login)
 - [Privacy and security](#privacy-and-security)
 - [Set it up with an AI agent](#set-it-up-with-an-ai-agent)
 - [Development](#development)
@@ -213,9 +213,9 @@ Notes:
 - The feed is read-only and refreshes every 10 minutes.
 - Known limits: time zones (`TZID`) are not converted, and changed single instances of a repeating event (`RECURRENCE-ID`) are not applied.
 
-## Start with Windows
+## Start at login
 
-To start the server when you log in (no admin rights needed):
+To start the server when you log in (no admin rights needed), on Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\install-autostart.ps1
@@ -225,6 +225,18 @@ This adds a hidden per-user task named `JARVIS` that runs `node server.js` on po
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\uninstall-autostart.ps1
+```
+
+On macOS, run it from a terminal where `node` and `claude` work (the agent keeps that terminal's `PATH`):
+
+```bash
+bash scripts/install-autostart.sh
+```
+
+This adds a per-user LaunchAgent named `local.jarvis-os` that runs `node server.js` on port 4317 and writes its log to `~/Library/Logs/jarvis-os.log`. To remove it (this also stops the server):
+
+```bash
+bash scripts/uninstall-autostart.sh
 ```
 
 ## Privacy and security
@@ -241,7 +253,7 @@ powershell -ExecutionPolicy Bypass -File scripts\uninstall-autostart.ps1
 
 > Set up Jarvis OS for me.
 
-The agent checks Node, finds your Claude folder, asks you a few questions, writes `config.json`, starts the server and can add the Windows autostart task. You can also start from the GitHub link alone (see [Quick start](#quick-start)).
+The agent checks Node, finds your Claude folder, asks you a few questions, writes `config.json`, starts the server and can add the autostart task (Windows or macOS). You can also start from the GitHub link alone (see [Quick start](#quick-start)).
 
 ## Development
 
