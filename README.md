@@ -144,7 +144,7 @@ Press `/` to search file names across your Claude folder, or `Ctrl+K` for the co
 
 ## Display and accessibility
 
-Choose **Display** in the top bar (or search "display" in `Ctrl+K`), change what you want, then press **Apply changes**. Settings stay in your browser.
+Choose the gear button at the top right (or search "display" in `Ctrl+K`), change what you want, then press **Apply changes**. Settings stay in your browser.
 
 | Setting | Effect |
 |---|---|

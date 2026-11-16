@@ -2005,7 +2005,8 @@ $('spTabs').addEventListener('click', e => { const b = e.target.closest('[data-s
 async function loadHome() {
   // live.js renders burn rate, live sessions and Needs you, and polls every 30 s
   // a fast first read can finish before live.js (loaded after this script) has run
-  if (!window.live) await new Promise(r => addEventListener('DOMContentLoaded', r, { once: true }))
+  // check .home: the #live list also shows up as window.live before live.js runs
+  if (!window.live?.home) await new Promise(r => addEventListener('DOMContentLoaded', r, { once: true }))
   const p = await window.live.home(), w = p && p.windows
   const c = data.usage.cost, d30 = Array.from({ length: 30 }, (_, i) => c.byDay[utcDay(i)] || 0).reduce((a, b) => a + b, 0)
   if (w) {

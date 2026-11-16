@@ -27,7 +27,7 @@ The user may say "Set up Jarvis OS for me", or paste the GitHub link of this rep
 8. **Finish**: give the user:
    - The link http://127.0.0.1:4317 (the first load reads all sessions and can take a few seconds).
    - How to start it again later: `node server.js` in the app folder.
-   - Three tips: number keys `1` to `8` change pages, `Ctrl+K` opens the command palette, and **Display** in the top bar turns on the 3D HUD view and interface sounds.
+   - Three tips: number keys `1` to `8` change pages, `Ctrl+K` opens the command palette, and the gear button at the top right (Display settings) turns on the 3D HUD view and interface sounds.
 9. **Calendar** (optional, only if the user asks): the user pastes their own iCal address on the Planner page. Do not ask them to paste it to you, and never write it to a file you will commit or show it in chat. It is a secret.
 
 ## Rules for changing the code
